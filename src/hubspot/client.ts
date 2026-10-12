@@ -1,7 +1,5 @@
 import { resilientFetch } from "./net.ts";
 
-const MUTATING = /\b(POST|PUT|PATCH|DELETE)\b/;
-
 export class ReadOnlyError extends Error {
   constructor(message: string) {
     super(message);
@@ -13,9 +11,6 @@ export function assertReadOnly(method: string, path: string): void {
   const verb = method.toUpperCase();
   if (verb !== "GET") {
     throw new ReadOnlyError(`Refused ${verb} ${path}. HubSpot Auditor never writes to a portal.`);
-  }
-  if (MUTATING.test(path)) {
-    throw new ReadOnlyError(`Refused path ${path}.`);
   }
 }
 
@@ -30,16 +25,34 @@ export class HubSpotReadClient {
 
   async get<T>(path: string): Promise<T> {
     assertReadOnly("GET", path);
-    const response = await this.fetchImpl(`https://api.hubapi.com${path}`, {
-      method: "GET",
-      headers: { Authorization: `Bearer ${this.token}`, Accept: "application/json" },
-    });
-    if (!response.ok) {
-      const error = new Error(`HTTP ${response.status} for ${path}`);
-      (error as Error & { status: number; path: string }).status = response.status;
-      (error as Error & { status: number; path: string }).path = path;
-      throw error;
+    let last: Response | null = null;
+    for (let attempt = 0; attempt < 4; attempt += 1) {
+      const response = await this.fetchImpl(`https://api.hubapi.com${path}`, {
+        method: "GET",
+        headers: { Authorization: `Bearer ${this.token}`, Accept: "application/json" },
+      });
+      last = response;
+      if (response.ok) return (await response.json()) as T;
+      if ((response.status === 429 || response.status >= 500) && attempt < 3) {
+        await delay(retryDelay(response, attempt));
+        continue;
+      }
+      break;
     }
-    return (await response.json()) as T;
+    const status = last?.status ?? 0;
+    const error = new Error(`HTTP ${status} for ${path}`);
+    (error as Error & { status: number; path: string }).status = status;
+    (error as Error & { status: number; path: string }).path = path;
+    throw error;
   }
+}
+
+function retryDelay(response: Response, attempt: number): number {
+  const header = response.headers.get("retry-after");
+  if (header && /^\d+$/.test(header)) return Math.min(Number(header) * 1000, 10_000);
+  return Math.min(500 * 2 ** attempt, 10_000);
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }

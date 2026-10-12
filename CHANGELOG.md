@@ -5,6 +5,17 @@ All notable changes to HubSpot Auditor are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.1] - 2026-10-12
+
+### Fixed
+
+- Site fetches require `https`, reject non-public addresses, and re-check redirects.
+- `run_audit` writes a PDF only as a file name under `reports/`, and does not overwrite unless asked.
+- HTTP 429 and 5xx are retried, then reported as throttling or an outage.
+- Portal names in evidence are shortened and stripped of control characters.
+- Sender TXT lookups use the system resolver first. Set `HUBSPOT_AUDITOR_DOH=0` to disable the DNS-over-HTTPS fallback.
+- The `hubspot-auditor` command runs through a Node shim, so a fresh install does not need a TypeScript build.
+
 ## [1.3.0] - 2026-10-12
 
 ### Added

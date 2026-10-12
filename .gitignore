@@ -4,5 +4,6 @@ dist/
 .env
 .env.*
 live-report/
+reports/
 *.token
 .DS_Store

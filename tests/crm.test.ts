@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { runCheck } from "../src/checks.ts";
+import { portalNameList, runCheck } from "../src/checks.ts";
 import { rule, snapshot } from "./helpers.ts";
 
 test("a failed name lookup is not reported as a missing scope", () => {
@@ -9,6 +9,20 @@ test("a failed name lookup is not reported as a missing scope", () => {
   assert.equal(finding.status, "missing");
   assert.match(finding.evidence, /No HTTP response/);
   assert.equal(finding.recommendedFix.includes("scope"), false);
+});
+
+test("throttling is not described as a missing scope", () => {
+  const portal = snapshot({ fetchGaps: [{ area: "contacts", path: "/crm/v3/objects/contacts", status: 429 }] });
+  const finding = runCheck(rule("crm.duplicate-contacts", "crm"), portal);
+  assert.match(finding.evidence, /HTTP 429/);
+  assert.match(finding.recommendedFix, /throttling or a HubSpot outage/);
+});
+
+test("portal names in evidence are shortened and stripped", () => {
+  const listed = portalNameList(["safe", "a".repeat(80), "<script>alert(1)</script>", "two", "three", "four", "five", "six"]);
+  assert.equal(listed.includes("<"), false);
+  assert.match(listed, /and \d+ more/);
+  assert.ok(listed.length < 250);
 });
 
 test("a forbidden read still asks for the scope", () => {

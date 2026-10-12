@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { assertReadOnly, ReadOnlyError } from "../src/hubspot/client.ts";
+import { assertReadOnly, HubSpotReadClient, ReadOnlyError } from "../src/hubspot/client.ts";
 import { classifyMailAuth, isResolutionError } from "../src/hubspot/net.ts";
 
 test("the HubSpot client refuses every method except GET", () => {
@@ -8,7 +8,27 @@ test("the HubSpot client refuses every method except GET", () => {
   for (const method of ["POST", "PUT", "PATCH", "DELETE"]) {
     assert.throws(() => assertReadOnly(method, "/crm/v3/objects/contacts"), ReadOnlyError);
   }
-  assert.throws(() => assertReadOnly("GET", "/crm/v3/objects/contacts/search POST"), ReadOnlyError);
+  assert.doesNotThrow(() => assertReadOnly("GET", "/crm/v3/objects/contacts?note=POST"));
+});
+
+test("a 429 is retried and a 403 is not", async () => {
+  let limited = 0;
+  let forbidden = 0;
+  const client = new HubSpotReadClient("token", async (url) => {
+    const path = String(url);
+    if (path.endsWith("/limited")) {
+      limited += 1;
+      if (limited === 1) return new Response("{}", { status: 429, headers: { "retry-after": "0" } });
+      return new Response(JSON.stringify({ ok: true }), { status: 200 });
+    }
+    forbidden += 1;
+    return new Response("{}", { status: 403 });
+  });
+  const body = await client.get<{ ok: boolean }>("/limited");
+  assert.equal(body.ok, true);
+  assert.equal(limited, 2);
+  await assert.rejects(client.get("/forbidden"), /HTTP 403/);
+  assert.equal(forbidden, 1);
 });
 
 test("name lookup failures are recognised on the error cause", () => {

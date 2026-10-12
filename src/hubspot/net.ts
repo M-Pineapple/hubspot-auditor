@@ -1,5 +1,5 @@
 import https from "node:https";
-import { lookup } from "node:dns/promises";
+import { lookup, resolveTxt } from "node:dns/promises";
 import type { IncomingHttpHeaders } from "node:http";
 
 const cache = new Map<string, { address: string; until: number }>();
@@ -30,7 +30,13 @@ function headerList(headers: IncomingHttpHeaders): [string, string][] {
   return pairs;
 }
 
-function requestHttps(ip: string, hostname: string, path: string, headers: Record<string, string>): Promise<Response> {
+function requestHttps(
+  ip: string,
+  hostname: string,
+  path: string,
+  headers: Record<string, string>,
+  options?: { timeoutMs?: number; maxBytes?: number },
+): Promise<Response> {
   return new Promise((resolve, reject) => {
     const req = https.request(
       {
@@ -42,15 +48,32 @@ function requestHttps(ip: string, hostname: string, path: string, headers: Recor
       },
       (res) => {
         const chunks: Buffer[] = [];
-        res.on("data", (chunk: Buffer) => chunks.push(chunk));
+        let size = 0;
+        res.on("data", (chunk: Buffer) => {
+          size += chunk.length;
+          if (options?.maxBytes && size > options.maxBytes) {
+            req.destroy(new Error("Page is larger than 2 MB."));
+            return;
+          }
+          chunks.push(chunk);
+        });
         res.on("end", () => {
           resolve(new Response(Buffer.concat(chunks), { status: res.statusCode ?? 0, headers: headerList(res.headers) }));
         });
       },
     );
+    if (options?.timeoutMs) req.setTimeout(options.timeoutMs, () => req.destroy(new Error("The site fetch timed out.")));
     req.on("error", reject);
     req.end();
   });
+}
+
+export function httpsGet(target: URL, address: string, options?: { timeoutMs?: number; maxBytes?: number }): Promise<Response> {
+  return requestHttps(address, target.hostname, `${target.pathname}${target.search}`, {}, options);
+}
+
+export function dohEnabled(): boolean {
+  return process.env.HUBSPOT_AUDITOR_DOH !== "0";
 }
 
 async function resolveWithDoh(hostname: string): Promise<string> {
@@ -112,7 +135,7 @@ export function classifyMailAuth(records: { name: string; value: string }[], dom
   };
 }
 
-export async function lookupTxt(hostname: string): Promise<string[]> {
+async function lookupTxtWithDoh(hostname: string): Promise<string[]> {
   const response = await requestHttps(
     "1.1.1.1",
     "cloudflare-dns.com",
@@ -125,11 +148,23 @@ export async function lookupTxt(hostname: string): Promise<string[]> {
     .map((item) => String(item.data).replaceAll('"', ""));
 }
 
+export async function lookupTxt(hostname: string): Promise<string[]> {
+  try {
+    const rows = await resolveTxt(hostname);
+    return rows.map((parts) => parts.join(""));
+  } catch (error) {
+    const code = (error as { code?: string }).code;
+    if (code === "ENOTFOUND" || code === "ENODATA") return [];
+    if (!dohEnabled()) return [];
+    return lookupTxtWithDoh(hostname);
+  }
+}
+
 export async function resilientFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
   try {
     return await fetch(input, init);
   } catch (error) {
-    if (!isResolutionError(error)) throw error;
+    if (!isResolutionError(error) || !dohEnabled()) throw error;
     const method = (init?.method ?? "GET").toUpperCase();
     if (method !== "GET") throw error;
     const target = new URL(typeof input === "string" ? input : input instanceof URL ? input.href : input.url);

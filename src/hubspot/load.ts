@@ -2,6 +2,7 @@ import type { FetchGap, FormDef, LandingPage, MarketingEmail, PortalSnapshot, Wo
 import { loadRules } from "../rules.ts";
 import { HubSpotReadClient } from "./client.ts";
 import { classifyMailAuth, lookupTxt, resilientFetch } from "./net.ts";
+import { fetchPublicPage } from "./public-url.ts";
 
 interface Page<T> {
   results?: T[];
@@ -163,9 +164,17 @@ async function listAll<T>(
   while (rows.length < limit && page < 10) {
     const joiner = path.includes("?") ? "&" : "?";
     const url = `${path}${joiner}limit=100${after ? `&after=${encodeURIComponent(after)}` : ""}`;
-    const body = page === 0
-      ? await tryGet<Page<T>>(client, url, area, gaps)
-      : await client.get<Page<T>>(url).catch(() => null);
+    let body: Page<T> | null;
+    if (page === 0) {
+      body = await tryGet<Page<T>>(client, url, area, gaps);
+    } else {
+      try {
+        body = await client.get<Page<T>>(url);
+      } catch (error) {
+        gaps.push({ area: `${area}-partial`, path: url, status: (error as { status?: number }).status ?? 0 });
+        return rows;
+      }
+    }
     if (!body) return rows.length > 0 ? rows : null;
     rows.push(...(body.results ?? []));
     after = body.paging?.next?.after;
@@ -226,8 +235,18 @@ export async function loadPortal(
   const formList = await tryGet<{ results?: RawForm[] }>(client, "/marketing/v3/forms", "forms", gaps);
   const forms: RawForm[] = [];
   for (const form of (formList?.results ?? []).slice(0, 30)) {
-    const detail = await client.get<RawForm>(`/marketing/v3/forms/${form.id}`).catch(() => null);
-    forms.push(detail ?? form);
+    try {
+      forms.push(await client.get<RawForm>(`/marketing/v3/forms/${form.id}`));
+    } catch (error) {
+      if (!gaps.some((gap) => gap.area === "forms-detail")) {
+        gaps.push({
+          area: "forms-detail",
+          path: `/marketing/v3/forms/${form.id}`,
+          status: (error as { status?: number }).status ?? 0,
+        });
+      }
+      forms.push(form);
+    }
   }
   const flows = await tryGet<{ results?: { id: string; name: string; isEnabled?: boolean; flowType?: string }[] }>(
     client,
@@ -285,9 +304,7 @@ export async function loadPortal(
     let html: string | null = null;
     if (page.url) {
       try {
-        assertPublicFetch(page.url);
-        const response = await fetchImpl(page.url, { method: "GET" });
-        html = response.ok ? await response.text() : null;
+        html = await fetchPublicPage(page.url);
       } catch {
         html = null;
       }
@@ -316,9 +333,7 @@ export async function loadPortal(
   let fetchError: string | null = null;
   if (siteUrl) {
     try {
-      assertPublicFetch(siteUrl);
-      const response = await fetchImpl(siteUrl, { method: "GET" });
-      html = await response.text();
+      html = await fetchPublicPage(siteUrl);
     } catch (error) {
       fetchError = `Could not fetch the public site: ${(error as Error).message}`;
     }
@@ -411,11 +426,4 @@ export async function loadPortal(
     owners: (ownerPage?.results ?? []).map((owner) => ({ id: String(owner.id) })),
     fetchGaps: gaps,
   };
-}
-
-export function assertPublicFetch(url: string): void {
-  const parsed = new URL(url);
-  if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
-    throw new Error("Only http and https site URLs can be fetched.");
-  }
 }

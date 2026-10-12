@@ -44,7 +44,34 @@ function blockedFinding(rule: CheckRule, snapshot: PortalSnapshot, area: string,
       "Extend the loader for this response, or turn the check off.",
     );
   }
-  return finding(rule, "missing", `Could not read ${area} (${hit.path}, HTTP ${hit.status}).`, scopeFix);
+  if (hit.status === 429 || hit.status >= 500) {
+    return finding(
+      rule,
+      "missing",
+      `Could not read ${area} (${hit.path}, HTTP ${hit.status}) after retries.`,
+      "Run the audit again. This was throttling or a HubSpot outage, not a missing scope.",
+    );
+  }
+  if (hit.status === 401 || hit.status === 403) {
+    return finding(rule, "missing", `Could not read ${area} (${hit.path}, HTTP ${hit.status}).`, scopeFix);
+  }
+  return finding(
+    rule,
+    "missing",
+    `Could not read ${area} (${hit.path}, HTTP ${hit.status}).`,
+    "Confirm this read endpoint exists for the portal, then run the audit again.",
+  );
+}
+
+export function sanitizePortalName(value: string): string {
+  return value.replace(/[\u0000-\u001f\u007f<>`]/g, "").trim().slice(0, 40);
+}
+
+export function portalNameList(names: string[], limit = 5): string {
+  const clean = names.map(sanitizePortalName).filter((name) => name.length > 0);
+  const shown = clean.slice(0, limit);
+  const extra = clean.length - shown.length;
+  return extra > 0 ? `${shown.join(", ")} and ${extra} more` : shown.join(", ");
 }
 
 function num(params: Record<string, unknown>, key: string, fallback: number): number {
@@ -119,7 +146,7 @@ export const checks: Record<string, CheckFn> = {
     return finding(
       rule,
       "broken",
-      `${thin.length} required property name(s) are below the fill ratio: ${thin.map((item) => item.name).join(", ")}.`,
+      `${thin.length} required property name(s) are below the fill ratio: ${portalNameList(thin.map((item) => item.name))}.`,
       "Make the thin properties required on the create forms and backfill the blanks.",
     );
   },
@@ -136,7 +163,7 @@ export const checks: Record<string, CheckFn> = {
     return finding(
       rule,
       "missing",
-      `${unused.length} custom property name(s) have no values: ${unused.map((item) => item.name).join(", ")}.`,
+      `${unused.length} custom property name(s) have no values: ${portalNameList(unused.map((item) => item.name))}.`,
       "Archive unused properties or start collecting them on a form.",
     );
   },
@@ -701,7 +728,7 @@ export const checks: Record<string, CheckFn> = {
     return finding(
       rule,
       "broken",
-      `${uncovered.length} journey stage(s) have no matching published email: ${uncovered.map((stage) => stage.name).join(", ")}.`,
+      `${uncovered.length} journey stage(s) have no matching published email: ${portalNameList(uncovered.map((stage) => stage.name))}.`,
       "Add one email or workflow for each uncovered stage.",
     );
   },
