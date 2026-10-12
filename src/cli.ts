@@ -3,6 +3,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { loadDemoPortal } from "./demo.ts";
 import { loadPortal } from "./hubspot/load.ts";
+import { reportToPdf } from "./pdf.ts";
 import { audit, reportToJson, reportToMarkdown } from "./report.ts";
 
 function arg(name: string): string | undefined {
@@ -31,6 +32,7 @@ async function main(): Promise<void> {
     const stem = snapshot.fictional ? "example-report" : "report";
     writeFileSync(join(out, `${stem}.md`), markdown);
     writeFileSync(join(out, `${stem}.json`), json);
+    writeFileSync(join(out, `${stem}.pdf`), await reportToPdf(report));
   }
   if (summary) {
     process.stdout.write(`${JSON.stringify({

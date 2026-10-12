@@ -1,6 +1,6 @@
 {
   "name": "hubspot-auditor",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Read-only MCP server that audits a HubSpot portal and reports what works, what is broken, and what is missing.",
   "type": "module",
   "license": "MIT",
@@ -18,11 +18,13 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.17.0",
     "js-yaml": "^4.1.0",
+    "pdfkit": "^0.20.2",
     "zod": "^3.25.0"
   },
   "devDependencies": {
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^24.0.0",
+    "@types/pdfkit": "^0.17.6",
     "typescript": "^5.9.0"
   }
 }

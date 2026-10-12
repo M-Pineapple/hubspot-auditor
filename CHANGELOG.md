@@ -5,6 +5,18 @@ All notable changes to HubSpot Auditor are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-10-12
+
+### Added
+
+- A PDF report with the score, a working, broken, and missing bar, each finding and its fix, and the 30/60/90-day plan.
+- `run_audit` accepts `pdfPath`. The CLI writes a `.pdf` next to the Markdown and JSON when you pass `--out`.
+
+### Fixed
+
+- When the system resolver cannot find `api.hubapi.com`, reads fall back to DNS over HTTPS and connect with the original host name.
+- A failed lookup is reported as no HTTP response, rather than as a missing scope.
+
 ## [1.1.0] - 2026-10-12
 
 ### Added

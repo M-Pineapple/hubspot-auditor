@@ -1,3 +1,5 @@
+import { resilientFetch } from "./net.ts";
+
 const MUTATING = /\b(POST|PUT|PATCH|DELETE)\b/;
 
 export class ReadOnlyError extends Error {
@@ -21,7 +23,7 @@ export class HubSpotReadClient {
   private readonly token: string;
   private readonly fetchImpl: typeof fetch;
 
-  constructor(token: string, fetchImpl: typeof fetch = fetch) {
+  constructor(token: string, fetchImpl: typeof fetch = resilientFetch) {
     this.token = token;
     this.fetchImpl = fetchImpl;
   }

@@ -3,6 +3,21 @@ import { test } from "node:test";
 import { runCheck } from "../src/checks.ts";
 import { rule, snapshot } from "./helpers.ts";
 
+test("a failed name lookup is not reported as a missing scope", () => {
+  const portal = snapshot({ fetchGaps: [{ area: "contacts", path: "/crm/v3/objects/contacts", status: 0 }] });
+  const finding = runCheck(rule("crm.duplicate-contacts", "crm"), portal);
+  assert.equal(finding.status, "missing");
+  assert.match(finding.evidence, /No HTTP response/);
+  assert.equal(finding.recommendedFix.includes("scope"), false);
+});
+
+test("a forbidden read still asks for the scope", () => {
+  const portal = snapshot({ fetchGaps: [{ area: "contacts", path: "/crm/v3/objects/contacts", status: 403 }] });
+  const finding = runCheck(rule("crm.duplicate-contacts", "crm"), portal);
+  assert.match(finding.evidence, /HTTP 403/);
+  assert.match(finding.recommendedFix, /scope/);
+});
+
 test("crm flags a shared email and a clean list", () => {
   const broken = runCheck(
     rule("crm.duplicate-contacts", "crm", { minGroupSize: 2 }),

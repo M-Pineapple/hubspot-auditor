@@ -6,7 +6,9 @@ Read-only audit of a HubSpot portal. You get a scored report of what works, what
 
 The server speaks MCP over stdio. A CLI runs the same audit. It never sends POST, PUT, PATCH, or DELETE to HubSpot.
 
-What's new in v1.1.0: landing page and brand checks, buyer-journey email hooks, and list, score, subscription, and campaign checks. A failed ticket-pipeline read no longer hides the deal pipeline. See [CHANGELOG.md](CHANGELOG.md).
+What's new in v1.2.0: a PDF report for a person to read, plus a DNS fallback when `api.hubapi.com` does not resolve. See [CHANGELOG.md](CHANGELOG.md).
+
+What's new in v1.1.0: landing page and brand checks, buyer-journey email hooks, and list, score, subscription, and campaign checks. A failed ticket-pipeline read no longer hides the deal pipeline.
 
 ## Who is this for?
 
@@ -71,7 +73,7 @@ Live mode reads HubSpot with GET requests and a private app token. If a call is 
 | Tool | Parameters | Purpose |
 | --- | --- | --- |
 | `list_checks` | none | Return the YAML checks, including severity and params |
-| `run_audit` | `demo` (optional boolean), `publicSiteUrl` (optional string) | Run the audit. `demo: true` uses the sample portal. Live mode reads `HUBSPOT_ACCESS_TOKEN` from the environment |
+| `run_audit` | `demo` (optional boolean), `publicSiteUrl` (optional string), `pdfPath` (optional string) | Run the audit. `demo: true` uses the sample portal. `pdfPath` writes the formatted PDF. Live mode reads `HUBSPOT_ACCESS_TOKEN` from the environment |
 
 ## Example workflow
 
@@ -93,7 +95,7 @@ npm test
 npm run audit:demo
 ```
 
-`npm run audit:demo` writes `examples/example-report.md` and `examples/example-report.json`.
+`npm run audit:demo` writes `examples/example-report.md`, `examples/example-report.json`, and `examples/example-report.pdf`.
 
 For a live portal, create a HubSpot private app and copy a token that has read scopes only. Do not grant write scopes. Put the token in the environment. Do not pass it as a tool argument.
 
@@ -146,7 +148,7 @@ Use the official server when you want an agent to work in the CRM. Use this serv
 
 ## Example report
 
-The full fictional report is [examples/example-report.md](examples/example-report.md). The JSON form is [examples/example-report.json](examples/example-report.json).
+The full fictional report is [examples/example-report.md](examples/example-report.md). The JSON form is [examples/example-report.json](examples/example-report.json). The PDF is [examples/example-report.pdf](examples/example-report.pdf).
 
 Harbour Glass Co scores **15**. Six checks are working, 20 are broken, and 14 are missing.
 

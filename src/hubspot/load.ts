@@ -1,6 +1,7 @@
 import type { FetchGap, FormDef, LandingPage, MarketingEmail, PortalSnapshot, Workflow } from "../types.ts";
 import { loadRules } from "../rules.ts";
 import { HubSpotReadClient } from "./client.ts";
+import { resilientFetch } from "./net.ts";
 
 interface Page<T> {
   results?: T[];
@@ -177,7 +178,7 @@ function mapForm(form: RawForm, html: string | null): FormDef {
 export async function loadPortal(
   token: string,
   publicSiteUrl?: string,
-  fetchImpl: typeof fetch = fetch,
+  fetchImpl: typeof fetch = resilientFetch,
 ): Promise<PortalSnapshot> {
   const client = new HubSpotReadClient(token, fetchImpl);
   const gaps: FetchGap[] = [];

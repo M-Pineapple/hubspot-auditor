@@ -25,12 +25,26 @@ function finding(
   };
 }
 
-function gap(snapshot: PortalSnapshot, area: string): string | null {
+function blockedFinding(rule: CheckRule, snapshot: PortalSnapshot, area: string, scopeFix: string): Finding | null {
   const hit = snapshot.fetchGaps.find((item) => item.area === area);
   if (!hit) return null;
-  if (hit.status === 200) return `${area} was returned but is not mapped into the snapshot yet (${hit.path}).`;
-  if (hit.status === 0) return `${area} is not available from the read-only loader (${hit.path}).`;
-  return `Could not read ${area} (${hit.path}, HTTP ${hit.status}).`;
+  if (hit.status === 0) {
+    return finding(
+      rule,
+      "missing",
+      `Could not reach the host for ${area} (${hit.path}). No HTTP response came back.`,
+      "Check DNS for api.hubapi.com and run the audit again.",
+    );
+  }
+  if (hit.status === 200) {
+    return finding(
+      rule,
+      "missing",
+      `${area} was returned but is not mapped into the snapshot yet (${hit.path}).`,
+      "Extend the loader for this response, or turn the check off.",
+    );
+  }
+  return finding(rule, "missing", `Could not read ${area} (${hit.path}, HTTP ${hit.status}).`, scopeFix);
 }
 
 function num(params: Record<string, unknown>, key: string, fallback: number): number {
@@ -45,8 +59,8 @@ function strList(params: Record<string, unknown>, key: string): string[] {
 
 export const checks: Record<string, CheckFn> = {
   "crm.duplicate-contacts": ({ snapshot, rule }) => {
-    const blocked = gap(snapshot, "contacts");
-    if (blocked) return finding(rule, "missing", blocked, "Grant the read scope for contacts and run the audit again.");
+    const blocked = blockedFinding(rule, snapshot, "contacts", "Grant the read scope for contacts and run the audit again.");
+    if (blocked) return blocked;
     const counts = new Map<string, number>();
     for (const contact of snapshot.contacts) {
       const email = contact.email?.trim().toLowerCase();
@@ -66,8 +80,8 @@ export const checks: Record<string, CheckFn> = {
   },
 
   "crm.duplicate-companies": ({ snapshot, rule }) => {
-    const blocked = gap(snapshot, "companies");
-    if (blocked) return finding(rule, "missing", blocked, "Grant the read scope for companies and run the audit again.");
+    const blocked = blockedFinding(rule, snapshot, "companies", "Grant the read scope for companies and run the audit again.");
+    if (blocked) return blocked;
     const counts = new Map<string, number>();
     for (const company of snapshot.companies) {
       const domain = company.domain?.trim().toLowerCase();
@@ -87,8 +101,8 @@ export const checks: Record<string, CheckFn> = {
   },
 
   "crm.missing-required-properties": ({ snapshot, rule }) => {
-    const blocked = gap(snapshot, "properties");
-    if (blocked) return finding(rule, "missing", blocked, "Grant the read scope for properties and run the audit again.");
+    const blocked = blockedFinding(rule, snapshot, "properties", "Grant the read scope for properties and run the audit again.");
+    if (blocked) return blocked;
     const required = new Set(strList(rule.params, "names"));
     const judged = snapshot.properties.filter((property) => {
       if (required.size > 0 && !required.has(property.name)) return false;
@@ -111,8 +125,8 @@ export const checks: Record<string, CheckFn> = {
   },
 
   "crm.unused-custom-properties": ({ snapshot, rule }) => {
-    const blocked = gap(snapshot, "properties");
-    if (blocked) return finding(rule, "missing", blocked, "Grant the read scope for properties and run the audit again.");
+    const blocked = blockedFinding(rule, snapshot, "properties", "Grant the read scope for properties and run the audit again.");
+    if (blocked) return blocked;
     const unused = snapshot.properties.filter(
       (property) => property.custom && property.filledCount !== null && property.filledCount <= num(rule.params, "maxFilled", 0),
     );
@@ -128,8 +142,8 @@ export const checks: Record<string, CheckFn> = {
   },
 
   "crm.lifecycle-lead-status": ({ snapshot, rule }) => {
-    const blocked = gap(snapshot, "contacts");
-    if (blocked) return finding(rule, "missing", blocked, "Grant the read scope for contacts and run the audit again.");
+    const blocked = blockedFinding(rule, snapshot, "contacts", "Grant the read scope for contacts and run the audit again.");
+    if (blocked) return blocked;
     const badPairs = strList(rule.params, "conflicts");
     let mismatches = 0;
     for (const contact of snapshot.contacts) {
@@ -148,8 +162,8 @@ export const checks: Record<string, CheckFn> = {
   },
 
   "pipelines.stage-probabilities": ({ snapshot, rule }) => {
-    const blocked = gap(snapshot, "pipelines-deals");
-    if (blocked) return finding(rule, "missing", blocked, "Grant the read scope for deal pipelines and run the audit again.");
+    const blocked = blockedFinding(rule, snapshot, "pipelines-deals", "Grant the read scope for deal pipelines and run the audit again.");
+    if (blocked) return blocked;
     const floor = num(rule.params, "lateStageMinProbability", 40);
     const dealPipelines = snapshot.pipelines.filter((item) => item.objectType === "deals");
     if (dealPipelines.length === 0) {
@@ -174,8 +188,8 @@ export const checks: Record<string, CheckFn> = {
   },
 
   "pipelines.stale-deals": ({ snapshot, rule }) => {
-    const blocked = gap(snapshot, "deals");
-    if (blocked) return finding(rule, "missing", blocked, "Grant the read scope for deals and run the audit again.");
+    const blocked = blockedFinding(rule, snapshot, "deals", "Grant the read scope for deals and run the audit again.");
+    if (blocked) return blocked;
     if (snapshot.deals.length === 0) {
       return finding(rule, "missing", "No deals were sampled.", "Read the deals object before judging staleness.");
     }
@@ -193,8 +207,8 @@ export const checks: Record<string, CheckFn> = {
   },
 
   "pipelines.required-fields": ({ snapshot, rule }) => {
-    const blocked = gap(snapshot, "pipelines-deals");
-    if (blocked) return finding(rule, "missing", blocked, "Grant the read scope for deal pipelines and run the audit again.");
+    const blocked = blockedFinding(rule, snapshot, "pipelines-deals", "Grant the read scope for deal pipelines and run the audit again.");
+    if (blocked) return blocked;
     const expected = strList(rule.params, "properties");
     const bare = snapshot.pipelines.filter((pipeline) =>
       pipeline.objectType === "deals" && pipeline.stages.some((stage) => expected.some((name) => !stage.requiredProperties.includes(name))),
@@ -211,8 +225,8 @@ export const checks: Record<string, CheckFn> = {
   },
 
   "pipelines.stage-automation": ({ snapshot, rule }) => {
-    const blocked = gap(snapshot, "pipelines-deals");
-    if (blocked) return finding(rule, "missing", blocked, "Grant the read scope for deal pipelines and run the audit again.");
+    const blocked = blockedFinding(rule, snapshot, "pipelines-deals", "Grant the read scope for deal pipelines and run the audit again.");
+    if (blocked) return blocked;
     const deals = snapshot.pipelines.filter((pipeline) => pipeline.objectType === "deals");
     if (deals.length === 0) {
       return finding(rule, "missing", "No deal pipeline was returned.", "Create a deal pipeline before judging stage automation.");
@@ -233,8 +247,8 @@ export const checks: Record<string, CheckFn> = {
   },
 
   "pipelines.ticket-pipeline": ({ snapshot, rule }) => {
-    const blocked = gap(snapshot, "pipelines-tickets");
-    if (blocked) return finding(rule, "missing", blocked, "Grant the read scope for ticket pipelines and run the audit again.");
+    const blocked = blockedFinding(rule, snapshot, "pipelines-tickets", "Grant the read scope for ticket pipelines and run the audit again.");
+    if (blocked) return blocked;
     const tickets = snapshot.pipelines.filter((pipeline) => pipeline.objectType === "tickets");
     if (tickets.length > 0) {
       return finding(rule, "working", `${tickets.length} ticket pipeline(s) are defined.`, "Keep a closed stage and a required resolution field.");
@@ -243,8 +257,8 @@ export const checks: Record<string, CheckFn> = {
   },
 
   "forms.live-forms": ({ snapshot, rule }) => {
-    const blocked = gap(snapshot, "forms");
-    if (blocked) return finding(rule, "missing", blocked, "Grant the read scope for forms and run the audit again.");
+    const blocked = blockedFinding(rule, snapshot, "forms", "Grant the read scope for forms and run the audit again.");
+    if (blocked) return blocked;
     const live = snapshot.forms.filter((form) => !form.archived);
     if (live.length > 0) {
       return finding(rule, "working", `${live.length} form(s) are not archived.`, "Archive forms that no page still embeds.");
@@ -253,8 +267,8 @@ export const checks: Record<string, CheckFn> = {
   },
 
   "forms.unused-forms": ({ snapshot, rule }) => {
-    const blocked = gap(snapshot, "forms");
-    if (blocked) return finding(rule, "missing", blocked, "Grant the read scope for forms and run the audit again.");
+    const blocked = blockedFinding(rule, snapshot, "forms", "Grant the read scope for forms and run the audit again.");
+    if (blocked) return blocked;
     if (snapshot.forms.some((form) => !form.archived && form.embedded === null)) {
       return finding(rule, "missing", "Embed status was not in the read response.", "Pass a public site URL or extend the loader with embed evidence.");
     }
@@ -271,8 +285,8 @@ export const checks: Record<string, CheckFn> = {
   },
 
   "forms.field-mapping": ({ snapshot, rule }) => {
-    const blocked = gap(snapshot, "forms");
-    if (blocked) return finding(rule, "missing", blocked, "Grant the read scope for forms and run the audit again.");
+    const blocked = blockedFinding(rule, snapshot, "forms", "Grant the read scope for forms and run the audit again.");
+    if (blocked) return blocked;
     if (snapshot.forms.some((form) => form.unmappedFields === null)) {
       return finding(rule, "missing", "Field mapping was not in the read response.", "Read each form definition before judging mappings.");
     }
@@ -289,8 +303,8 @@ export const checks: Record<string, CheckFn> = {
   },
 
   "forms.gdpr-consent": ({ snapshot, rule }) => {
-    const blocked = gap(snapshot, "forms");
-    if (blocked) return finding(rule, "missing", blocked, "Grant the read scope for forms and run the audit again.");
+    const blocked = blockedFinding(rule, snapshot, "forms", "Grant the read scope for forms and run the audit again.");
+    if (blocked) return blocked;
     if (snapshot.forms.some((form) => !form.archived && form.gdprConsent === null)) {
       return finding(rule, "missing", "GDPR consent was not in the read response.", "Read legal consent options on each live form.");
     }
@@ -307,8 +321,8 @@ export const checks: Record<string, CheckFn> = {
   },
 
   "forms.follow-up-email": ({ snapshot, rule }) => {
-    const blocked = gap(snapshot, "forms");
-    if (blocked) return finding(rule, "missing", blocked, "Grant the read scope for forms and run the audit again.");
+    const blocked = blockedFinding(rule, snapshot, "forms", "Grant the read scope for forms and run the audit again.");
+    if (blocked) return blocked;
     const live = snapshot.forms.filter((form) => !form.archived);
     if (live.length === 0 || live.every((form) => form.embedded === false)) {
       return finding(rule, "missing", "No embedded live form was available to judge follow-up email.", "Embed a form, or record which forms are embedded.");
@@ -329,8 +343,8 @@ export const checks: Record<string, CheckFn> = {
   },
 
   "forms.spam-protection": ({ snapshot, rule }) => {
-    const blocked = gap(snapshot, "forms");
-    if (blocked) return finding(rule, "missing", blocked, "Grant the read scope for forms and run the audit again.");
+    const blocked = blockedFinding(rule, snapshot, "forms", "Grant the read scope for forms and run the audit again.");
+    if (blocked) return blocked;
     if (snapshot.forms.some((form) => !form.archived && form.spamProtection === null)) {
       return finding(rule, "missing", "Spam protection was not in the read response.", "Read the form configuration for CAPTCHA or a honeypot.");
     }
@@ -414,8 +428,8 @@ export const checks: Record<string, CheckFn> = {
   },
 
   "email.workflows-health": ({ snapshot, rule }) => {
-    const blocked = gap(snapshot, "workflows");
-    if (blocked) return finding(rule, "missing", blocked, "Grant the automation read scope and run the audit again.");
+    const blocked = blockedFinding(rule, snapshot, "workflows", "Grant the automation read scope and run the audit again.");
+    if (blocked) return blocked;
     const flows = snapshot.workflows.filter((workflow) => workflow.kind === "workflow");
     if (flows.length === 0) {
       return finding(rule, "missing", "No workflows were returned.", "Create the operational workflows you expect, or confirm the automation scope.");
@@ -450,8 +464,8 @@ export const checks: Record<string, CheckFn> = {
   },
 
   "email.nurture-sequence": ({ snapshot, rule }) => {
-    const blocked = gap(snapshot, "workflows");
-    if (blocked) return finding(rule, "missing", blocked, "Grant the automation read scope and run the audit again.");
+    const blocked = blockedFinding(rule, snapshot, "workflows", "Grant the automation read scope and run the audit again.");
+    if (blocked) return blocked;
     const nurture = snapshot.workflows.filter((workflow) => workflow.kind === "nurture" && workflow.enabled);
     if (nurture.length > 0) {
       return finding(rule, "working", `${nurture.length} nurture sequence(s) are active.`, "Suppress nurtures when a contact becomes a customer.");
@@ -460,8 +474,8 @@ export const checks: Record<string, CheckFn> = {
   },
 
   "email.unengaged-handling": ({ snapshot, rule }) => {
-    const blocked = gap(snapshot, "workflows");
-    if (blocked) return finding(rule, "missing", blocked, "Grant the automation read scope and run the audit again.");
+    const blocked = blockedFinding(rule, snapshot, "workflows", "Grant the automation read scope and run the audit again.");
+    if (blocked) return blocked;
     const handler = snapshot.workflows.filter((workflow) => workflow.kind === "unengaged" && workflow.enabled);
     if (handler.length > 0) {
       return finding(rule, "working", "An active workflow handles unengaged contacts.", "Suppress or delete contacts who never engage.");
@@ -470,8 +484,8 @@ export const checks: Record<string, CheckFn> = {
   },
 
   "email.sender-authentication": ({ snapshot, rule }) => {
-    const blocked = gap(snapshot, "senders");
-    if (blocked) return finding(rule, "missing", blocked, "Read sender-domain authentication and run the audit again.");
+    const blocked = blockedFinding(rule, snapshot, "senders", "Read sender-domain authentication and run the audit again.");
+    if (blocked) return blocked;
     if (snapshot.senderDomains.length === 0) {
       return finding(rule, "missing", "No sender domain was returned.", "Connect the domain you send from.");
     }
@@ -490,8 +504,8 @@ export const checks: Record<string, CheckFn> = {
   },
 
   "integrations.connected-apps": ({ snapshot, rule }) => {
-    const blocked = gap(snapshot, "integrations");
-    if (blocked) return finding(rule, "missing", blocked, "Grant the integrations read scope and run the audit again.");
+    const blocked = blockedFinding(rule, snapshot, "integrations", "Grant the integrations read scope and run the audit again.");
+    if (blocked) return blocked;
     const connected = snapshot.integrations.filter((item) => item.connected);
     if (connected.length > 0) {
       return finding(rule, "working", `${connected.length} app(s) are connected.`, "Remove apps you no longer use.");
@@ -500,8 +514,8 @@ export const checks: Record<string, CheckFn> = {
   },
 
   "integrations.webhook-subscriptions": ({ snapshot, rule }) => {
-    const blocked = gap(snapshot, "webhooks");
-    if (blocked) return finding(rule, "missing", blocked, "Grant the webhooks read scope and run the audit again.");
+    const blocked = blockedFinding(rule, snapshot, "webhooks", "Grant the webhooks read scope and run the audit again.");
+    if (blocked) return blocked;
     if (snapshot.webhooks.length === 0) {
       return finding(rule, "missing", "No webhook subscription was returned.", "Subscribe to the events your integration needs.");
     }
@@ -518,8 +532,8 @@ export const checks: Record<string, CheckFn> = {
   },
 
   "integrations.sync-errors": ({ snapshot, rule }) => {
-    const blocked = gap(snapshot, "integrations");
-    if (blocked) return finding(rule, "missing", blocked, "Grant the integrations read scope and run the audit again.");
+    const blocked = blockedFinding(rule, snapshot, "integrations", "Grant the integrations read scope and run the audit again.");
+    if (blocked) return blocked;
     const badApps = snapshot.integrations.filter((item) => item.syncError);
     const badHooks = snapshot.webhooks.filter((hook) => hook.errorCount > 0);
     if (badApps.length === 0 && badHooks.length === 0) {
@@ -534,8 +548,8 @@ export const checks: Record<string, CheckFn> = {
   },
 
   "reporting.dashboards": ({ snapshot, rule }) => {
-    const blocked = gap(snapshot, "reports");
-    if (blocked) return finding(rule, "missing", blocked, "Grant the reporting read scope and run the audit again.");
+    const blocked = blockedFinding(rule, snapshot, "reports", "Grant the reporting read scope and run the audit again.");
+    if (blocked) return blocked;
     const dashboards = snapshot.reports.filter((report) => report.kind === "dashboard");
     if (dashboards.length > 0) {
       return finding(rule, "working", `${dashboards.length} dashboard(s) are present.`, "Keep one operating dashboard for the revenue team.");
@@ -544,8 +558,8 @@ export const checks: Record<string, CheckFn> = {
   },
 
   "reporting.attribution": ({ snapshot, rule }) => {
-    const blocked = gap(snapshot, "reports");
-    if (blocked) return finding(rule, "missing", blocked, "Grant the reporting read scope and run the audit again.");
+    const blocked = blockedFinding(rule, snapshot, "reports", "Grant the reporting read scope and run the audit again.");
+    if (blocked) return blocked;
     const reports = snapshot.reports.filter((report) => report.kind === "attribution");
     if (reports.length > 0) {
       return finding(rule, "working", `${reports.length} attribution report(s) are present.`, "Review the model when campaigns change.");
@@ -554,8 +568,8 @@ export const checks: Record<string, CheckFn> = {
   },
 
   "reporting.lifecycle-funnel": ({ snapshot, rule }) => {
-    const blocked = gap(snapshot, "reports");
-    if (blocked) return finding(rule, "missing", blocked, "Grant the reporting read scope and run the audit again.");
+    const blocked = blockedFinding(rule, snapshot, "reports", "Grant the reporting read scope and run the audit again.");
+    if (blocked) return blocked;
     const reports = snapshot.reports.filter((report) => report.kind === "lifecycle-funnel");
     if (reports.length > 0) {
       return finding(rule, "working", `${reports.length} lifecycle funnel report(s) are present.`, "Use the same stage names as the CRM properties.");
@@ -564,8 +578,8 @@ export const checks: Record<string, CheckFn> = {
   },
 
   "brand.published-pages": ({ snapshot, rule }) => {
-    const blocked = gap(snapshot, "landing-pages");
-    if (blocked) return finding(rule, "missing", blocked, "Grant the CMS read scope and run the audit again.");
+    const blocked = blockedFinding(rule, snapshot, "landing-pages", "Grant the CMS read scope and run the audit again.");
+    if (blocked) return blocked;
     const published = snapshot.landingPages.filter((page) => page.published);
     if (published.length > 0) {
       return finding(rule, "working", `${published.length} landing page(s) are published.`, "Keep a draft only while it is still being edited.");
@@ -574,8 +588,8 @@ export const checks: Record<string, CheckFn> = {
   },
 
   "brand.page-meta": ({ snapshot, rule }) => {
-    const blocked = gap(snapshot, "landing-pages");
-    if (blocked) return finding(rule, "missing", blocked, "Grant the CMS read scope and run the audit again.");
+    const blocked = blockedFinding(rule, snapshot, "landing-pages", "Grant the CMS read scope and run the audit again.");
+    if (blocked) return blocked;
     const published = snapshot.landingPages.filter((page) => page.published);
     if (published.length === 0) {
       return finding(rule, "missing", "No published landing page was available for meta checks.", "Publish a page before judging titles and descriptions.");
@@ -588,8 +602,8 @@ export const checks: Record<string, CheckFn> = {
   },
 
   "brand.page-tracking": ({ snapshot, rule }) => {
-    const blocked = gap(snapshot, "landing-pages");
-    if (blocked) return finding(rule, "missing", blocked, "Grant the CMS read scope and run the audit again.");
+    const blocked = blockedFinding(rule, snapshot, "landing-pages", "Grant the CMS read scope and run the audit again.");
+    if (blocked) return blocked;
     const published = snapshot.landingPages.filter((page) => page.published);
     const withHtml = published.filter((page) => page.html !== null);
     if (withHtml.length === 0) {
@@ -603,8 +617,8 @@ export const checks: Record<string, CheckFn> = {
   },
 
   "brand.page-cta": ({ snapshot, rule }) => {
-    const blocked = gap(snapshot, "landing-pages");
-    if (blocked) return finding(rule, "missing", blocked, "Grant the CMS read scope and run the audit again.");
+    const blocked = blockedFinding(rule, snapshot, "landing-pages", "Grant the CMS read scope and run the audit again.");
+    if (blocked) return blocked;
     const patterns = strList(rule.params, "patterns");
     const needles = patterns.length > 0 ? patterns : ["hs-cta", "hs-form"];
     const published = snapshot.landingPages.filter((page) => page.published);
@@ -624,8 +638,8 @@ export const checks: Record<string, CheckFn> = {
     if (markers.length === 0) {
       return finding(rule, "missing", "No brand markers are configured.", "Add phrases, colour tokens, or asset names under params.markers.");
     }
-    const blocked = gap(snapshot, "landing-pages");
-    if (blocked) return finding(rule, "missing", blocked, "Grant the CMS read scope and run the audit again.");
+    const blocked = blockedFinding(rule, snapshot, "landing-pages", "Grant the CMS read scope and run the audit again.");
+    if (blocked) return blocked;
     const published = snapshot.landingPages.filter((page) => page.published);
     const withHtml = published.filter((page) => page.html !== null);
     if (withHtml.length === 0) {
@@ -639,8 +653,8 @@ export const checks: Record<string, CheckFn> = {
   },
 
   "journey.stage-hooks": ({ snapshot, rule }) => {
-    const blocked = gap(snapshot, "emails");
-    if (blocked) return finding(rule, "missing", blocked, "Grant the marketing email read scope and run the audit again.");
+    const blocked = blockedFinding(rule, snapshot, "emails", "Grant the marketing email read scope and run the audit again.");
+    if (blocked) return blocked;
     const stages = Array.isArray(rule.params.stages) ? rule.params.stages : [];
     const parsed = stages.flatMap((stage) => {
       if (!stage || typeof stage !== "object") return [];
@@ -672,8 +686,8 @@ export const checks: Record<string, CheckFn> = {
   },
 
   "program.dynamic-lists": ({ snapshot, rule }) => {
-    const blocked = gap(snapshot, "lists");
-    if (blocked) return finding(rule, "missing", blocked, "Grant the lists read scope and run the audit again.");
+    const blocked = blockedFinding(rule, snapshot, "lists", "Grant the lists read scope and run the audit again.");
+    if (blocked) return blocked;
     const dynamic = snapshot.lists.filter((list) => list.dynamic);
     if (dynamic.length > 0) {
       return finding(rule, "working", `${dynamic.length} active list(s) are dynamic.`, "Use a dynamic list for each lifecycle stage you mail.");
@@ -682,8 +696,8 @@ export const checks: Record<string, CheckFn> = {
   },
 
   "program.lead-score": ({ snapshot, rule }) => {
-    const blocked = gap(snapshot, "properties");
-    if (blocked) return finding(rule, "missing", blocked, "Grant the read scope for properties and run the audit again.");
+    const blocked = blockedFinding(rule, snapshot, "properties", "Grant the read scope for properties and run the audit again.");
+    if (blocked) return blocked;
     const names = strList(rule.params, "names");
     const wanted = names.length > 0 ? names : ["hs_predictivecontactscore"];
     const found = snapshot.properties.filter((property) => wanted.includes(property.name));
@@ -702,8 +716,8 @@ export const checks: Record<string, CheckFn> = {
   },
 
   "program.subscription-types": ({ snapshot, rule }) => {
-    const blocked = gap(snapshot, "subscriptions");
-    if (blocked) return finding(rule, "missing", blocked, "Grant the communication-preferences read scope and run the audit again.");
+    const blocked = blockedFinding(rule, snapshot, "subscriptions", "Grant the communication-preferences read scope and run the audit again.");
+    if (blocked) return blocked;
     if (snapshot.subscriptionTypes.length > 0) {
       return finding(rule, "working", `${snapshot.subscriptionTypes.length} subscription type(s) are defined.`, "Map each marketing email to one subscription type.");
     }
@@ -711,11 +725,9 @@ export const checks: Record<string, CheckFn> = {
   },
 
   "program.campaigns": ({ snapshot, rule }) => {
-    const pagesBlocked = gap(snapshot, "landing-pages");
-    const emailsBlocked = gap(snapshot, "emails");
-    if (pagesBlocked && emailsBlocked) {
-      return finding(rule, "missing", pagesBlocked, "Read landing pages or marketing emails before judging campaigns.");
-    }
+    const pagesBlocked = blockedFinding(rule, snapshot, "landing-pages", "Grant the CMS read scope and run the audit again.");
+    const emailsBlocked = blockedFinding(rule, snapshot, "emails", "Grant the marketing email read scope and run the audit again.");
+    if (pagesBlocked && emailsBlocked) return pagesBlocked;
     const assets = [
       ...snapshot.landingPages.filter((page) => page.published),
       ...snapshot.emails.filter((email) => email.published),
