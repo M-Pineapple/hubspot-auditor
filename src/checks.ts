@@ -1,0 +1,565 @@
+import type { CheckRule, Finding, PortalSnapshot, Severity, Status } from "./types.ts";
+
+export interface CheckContext {
+  snapshot: PortalSnapshot;
+  rule: CheckRule;
+}
+
+export type CheckFn = (ctx: CheckContext) => Finding;
+
+function finding(
+  rule: CheckRule,
+  status: Status,
+  evidence: string,
+  recommendedFix: string,
+  severity?: Severity,
+): Finding {
+  return {
+    id: rule.id,
+    auditor: rule.auditor,
+    status,
+    severity: severity ?? rule.severity,
+    title: rule.title,
+    evidence,
+    recommendedFix,
+  };
+}
+
+function gap(snapshot: PortalSnapshot, area: string): string | null {
+  const hit = snapshot.fetchGaps.find((item) => item.area === area);
+  if (!hit) return null;
+  if (hit.status === 200) return `${area} was returned but is not mapped into the snapshot yet (${hit.path}).`;
+  if (hit.status === 0) return `${area} is not available from the read-only loader (${hit.path}).`;
+  return `Could not read ${area} (${hit.path}, HTTP ${hit.status}).`;
+}
+
+function num(params: Record<string, unknown>, key: string, fallback: number): number {
+  const value = params[key];
+  return typeof value === "number" ? value : fallback;
+}
+
+function strList(params: Record<string, unknown>, key: string): string[] {
+  const value = params[key];
+  return Array.isArray(value) ? value.map(String) : [];
+}
+
+export const checks: Record<string, CheckFn> = {
+  "crm.duplicate-contacts": ({ snapshot, rule }) => {
+    const blocked = gap(snapshot, "contacts");
+    if (blocked) return finding(rule, "missing", blocked, "Grant the read scope for contacts and run the audit again.");
+    const counts = new Map<string, number>();
+    for (const contact of snapshot.contacts) {
+      const email = contact.email?.trim().toLowerCase();
+      if (!email) continue;
+      counts.set(email, (counts.get(email) ?? 0) + 1);
+    }
+    const duplicateGroups = [...counts.values()].filter((count) => count >= num(rule.params, "minGroupSize", 2)).length;
+    if (duplicateGroups === 0) {
+      return finding(rule, "working", "No duplicate email addresses in the contact sample.", "Keep a unique email property and a merge workflow.");
+    }
+    return finding(
+      rule,
+      "broken",
+      `${duplicateGroups} email address(es) are shared by more than one contact.`,
+      "Merge the duplicate contacts and turn on a create-time duplicate rule.",
+    );
+  },
+
+  "crm.duplicate-companies": ({ snapshot, rule }) => {
+    const blocked = gap(snapshot, "companies");
+    if (blocked) return finding(rule, "missing", blocked, "Grant the read scope for companies and run the audit again.");
+    const counts = new Map<string, number>();
+    for (const company of snapshot.companies) {
+      const domain = company.domain?.trim().toLowerCase();
+      if (!domain) continue;
+      counts.set(domain, (counts.get(domain) ?? 0) + 1);
+    }
+    const duplicateGroups = [...counts.values()].filter((count) => count >= 2).length;
+    if (duplicateGroups === 0) {
+      return finding(rule, "working", "No duplicate company domains in the sample.", "Keep domain as the company unique key.");
+    }
+    return finding(
+      rule,
+      "broken",
+      `${duplicateGroups} domain(s) are shared by more than one company.`,
+      "Merge companies that share a domain.",
+    );
+  },
+
+  "crm.missing-required-properties": ({ snapshot, rule }) => {
+    const blocked = gap(snapshot, "properties");
+    if (blocked) return finding(rule, "missing", blocked, "Grant the read scope for properties and run the audit again.");
+    const required = new Set(strList(rule.params, "names"));
+    const thin = snapshot.properties.filter((property) => {
+      if (required.size > 0 && !required.has(property.name)) return false;
+      if (required.size === 0 && !property.required) return false;
+      if (property.totalCount === 0) return false;
+      const ratio = property.filledCount / property.totalCount;
+      return ratio < num(rule.params, "minFillRatio", 0.9);
+    });
+    if (thin.length === 0) {
+      return finding(rule, "working", "Required properties are filled on at least 90% of records.", "Keep required fields on create forms.");
+    }
+    return finding(
+      rule,
+      "broken",
+      `${thin.length} required property name(s) are below the fill ratio: ${thin.map((item) => item.name).join(", ")}.`,
+      "Make the thin properties required on the create forms and backfill the blanks.",
+    );
+  },
+
+  "crm.unused-custom-properties": ({ snapshot, rule }) => {
+    const blocked = gap(snapshot, "properties");
+    if (blocked) return finding(rule, "missing", blocked, "Grant the read scope for properties and run the audit again.");
+    const unused = snapshot.properties.filter(
+      (property) => property.custom && property.filledCount <= num(rule.params, "maxFilled", 0),
+    );
+    if (unused.length === 0) {
+      return finding(rule, "working", "Every custom property in the sample has at least one value.", "Review new properties after 30 days.");
+    }
+    return finding(
+      rule,
+      "missing",
+      `${unused.length} custom property name(s) have no values: ${unused.map((item) => item.name).join(", ")}.`,
+      "Archive unused properties or start collecting them on a form.",
+    );
+  },
+
+  "crm.lifecycle-lead-status": ({ snapshot, rule }) => {
+    const blocked = gap(snapshot, "contacts");
+    if (blocked) return finding(rule, "missing", blocked, "Grant the read scope for contacts and run the audit again.");
+    const badPairs = strList(rule.params, "conflicts");
+    let mismatches = 0;
+    for (const contact of snapshot.contacts) {
+      const pair = `${contact.lifecycleStage ?? ""}|${contact.leadStatus ?? ""}`;
+      if (badPairs.includes(pair)) mismatches += 1;
+    }
+    if (mismatches === 0) {
+      return finding(rule, "working", "Lifecycle stage and lead status do not use a conflicting pair.", "Document the allowed pairs for your team.");
+    }
+    return finding(
+      rule,
+      "broken",
+      `${mismatches} contact(s) use a conflicting lifecycle stage and lead status.`,
+      "Clear the conflicting lead status when lifecycle stage changes.",
+    );
+  },
+
+  "pipelines.stage-probabilities": ({ snapshot, rule }) => {
+    const blocked = gap(snapshot, "pipelines");
+    if (blocked) return finding(rule, "missing", blocked, "Grant the read scope for pipelines and run the audit again.");
+    const floor = num(rule.params, "lateStageMinProbability", 40);
+    const weak: string[] = [];
+    for (const pipeline of snapshot.pipelines.filter((item) => item.objectType === "deals")) {
+      pipeline.stages.forEach((stage, index) => {
+        if (index === 0) return;
+        if (stage.probability === null || stage.probability < floor) weak.push(stage.label);
+      });
+    }
+    if (weak.length === 0) {
+      return finding(rule, "working", "Later deal stages have a probability at or above the floor.", "Review probabilities when you add a stage.");
+    }
+    return finding(
+      rule,
+      "broken",
+      `${weak.length} later deal stage(s) are below ${floor}% probability.`,
+      "Set a realistic probability on each open stage.",
+    );
+  },
+
+  "pipelines.stale-deals": ({ snapshot, rule }) => {
+    const blocked = gap(snapshot, "deals");
+    if (blocked) return finding(rule, "missing", blocked, "Grant the read scope for deals and run the audit again.");
+    if (snapshot.deals.length === 0) {
+      return finding(rule, "missing", "No deals were sampled.", "Read the deals object before judging staleness.");
+    }
+    const days = num(rule.params, "staleDays", 30);
+    const stale = snapshot.deals.filter((deal) => deal.daysSinceUpdate >= days);
+    if (stale.length === 0) {
+      return finding(rule, "working", `No sampled deal has been quiet for ${days} days or more.`, "Add a stale-deal task workflow.");
+    }
+    return finding(
+      rule,
+      "broken",
+      `${stale.length} sampled deal(s) have not been updated for ${days} days or more.`,
+      "Create a workflow that tasks the owner when a deal goes stale.",
+    );
+  },
+
+  "pipelines.required-fields": ({ snapshot, rule }) => {
+    const blocked = gap(snapshot, "pipelines");
+    if (blocked) return finding(rule, "missing", blocked, "Grant the read scope for pipelines and run the audit again.");
+    const expected = strList(rule.params, "properties");
+    const bare = snapshot.pipelines.filter((pipeline) =>
+      pipeline.stages.some((stage) => expected.some((name) => !stage.requiredProperties.includes(name))),
+    );
+    if (bare.length === 0) {
+      return finding(rule, "working", "Every stage requires the configured fields.", "Keep the required list in this YAML file.");
+    }
+    return finding(
+      rule,
+      "missing",
+      `${bare.length} pipeline(s) have a stage that does not require the configured fields.`,
+      "Mark those properties required before a record can enter the stage.",
+    );
+  },
+
+  "pipelines.stage-automation": ({ snapshot, rule }) => {
+    const blocked = gap(snapshot, "stage-automation") ?? gap(snapshot, "pipelines");
+    if (blocked) return finding(rule, "missing", blocked, "Grant the read scope for pipelines and run the audit again.");
+    const quiet = snapshot.pipelines.filter((pipeline) => pipeline.automatedStageIds.length === 0);
+    if (quiet.length === 0) {
+      return finding(rule, "working", "Every pipeline has at least one stage automation.", "Review the automation when stages change.");
+    }
+    return finding(
+      rule,
+      "missing",
+      `${quiet.length} pipeline(s) have no stage-change automation.`,
+      "Add a workflow or stage action for the first handoff stage.",
+    );
+  },
+
+  "pipelines.ticket-pipeline": ({ snapshot, rule }) => {
+    const blocked = gap(snapshot, "pipelines");
+    if (blocked) return finding(rule, "missing", blocked, "Grant the read scope for pipelines and run the audit again.");
+    const tickets = snapshot.pipelines.filter((pipeline) => pipeline.objectType === "tickets");
+    if (tickets.length > 0) {
+      return finding(rule, "working", `${tickets.length} ticket pipeline(s) are defined.`, "Keep a closed stage and a required resolution field.");
+    }
+    return finding(rule, "missing", "No ticket pipeline was returned.", "Create a support pipeline if you handle tickets in HubSpot.");
+  },
+
+  "forms.live-forms": ({ snapshot, rule }) => {
+    const blocked = gap(snapshot, "forms");
+    if (blocked) return finding(rule, "missing", blocked, "Grant the read scope for forms and run the audit again.");
+    const live = snapshot.forms.filter((form) => !form.archived);
+    if (live.length > 0) {
+      return finding(rule, "working", `${live.length} form(s) are not archived.`, "Archive forms that no page still embeds.");
+    }
+    return finding(rule, "missing", "Every form is archived.", "Publish one form for the primary conversion.");
+  },
+
+  "forms.unused-forms": ({ snapshot, rule }) => {
+    const blocked = gap(snapshot, "forms");
+    if (blocked) return finding(rule, "missing", blocked, "Grant the read scope for forms and run the audit again.");
+    if (snapshot.forms.some((form) => !form.archived && form.embedded === null)) {
+      return finding(rule, "missing", "Embed status was not in the read response.", "Pass a public site URL or extend the loader with embed evidence.");
+    }
+    const unused = snapshot.forms.filter((form) => !form.archived && form.embedded === false);
+    if (unused.length === 0) {
+      return finding(rule, "working", "Every live form is marked embedded.", "Re-check embeds when a landing page is retired.");
+    }
+    return finding(
+      rule,
+      "missing",
+      `${unused.length} live form(s) are not embedded.`,
+      "Embed the form or archive it.",
+    );
+  },
+
+  "forms.field-mapping": ({ snapshot, rule }) => {
+    const blocked = gap(snapshot, "forms");
+    if (blocked) return finding(rule, "missing", blocked, "Grant the read scope for forms and run the audit again.");
+    if (snapshot.forms.some((form) => form.unmappedFields === null)) {
+      return finding(rule, "missing", "Field mapping was not in the read response.", "Read each form definition before judging mappings.");
+    }
+    const unmapped = snapshot.forms.reduce((sum, form) => sum + (form.unmappedFields ?? 0), 0);
+    if (unmapped === 0) {
+      return finding(rule, "working", "Form fields map to properties.", "Map any new field before you publish.");
+    }
+    return finding(
+      rule,
+      "broken",
+      `${unmapped} form field(s) have no property mapping.`,
+      "Map each field to a contact or company property.",
+    );
+  },
+
+  "forms.gdpr-consent": ({ snapshot, rule }) => {
+    const blocked = gap(snapshot, "forms");
+    if (blocked) return finding(rule, "missing", blocked, "Grant the read scope for forms and run the audit again.");
+    if (snapshot.forms.some((form) => !form.archived && form.gdprConsent === null)) {
+      return finding(rule, "missing", "GDPR consent was not in the read response.", "Read legal consent options on each live form.");
+    }
+    const bare = snapshot.forms.filter((form) => !form.archived && form.gdprConsent === false);
+    if (bare.length === 0) {
+      return finding(rule, "working", "Live forms include a GDPR consent field.", "Keep the consent text dated and specific.");
+    }
+    return finding(
+      rule,
+      "broken",
+      `${bare.length} live form(s) have no GDPR consent field.`,
+      "Add a consent checkbox and store the lawful basis.",
+    );
+  },
+
+  "forms.follow-up-email": ({ snapshot, rule }) => {
+    const blocked = gap(snapshot, "forms");
+    if (blocked) return finding(rule, "missing", blocked, "Grant the read scope for forms and run the audit again.");
+    const live = snapshot.forms.filter((form) => !form.archived);
+    if (live.length === 0 || live.every((form) => form.embedded === false)) {
+      return finding(rule, "missing", "No embedded live form was available to judge follow-up email.", "Embed a form, or record which forms are embedded.");
+    }
+    if (live.some((form) => form.embedded === null || (form.embedded === true && form.followUpEmail === null))) {
+      return finding(rule, "missing", "Follow-up email status was not in the read response.", "Read the form follow-up or the submit workflow.");
+    }
+    const quiet = snapshot.forms.filter((form) => !form.archived && form.embedded === true && form.followUpEmail === false);
+    if (quiet.length === 0) {
+      return finding(rule, "working", "Embedded forms have a follow-up email.", "Send a plain confirmation, not only an internal alert.");
+    }
+    return finding(
+      rule,
+      "missing",
+      `${quiet.length} embedded form(s) have no follow-up email.`,
+      "Add a follow-up email or a workflow enrolment on submit.",
+    );
+  },
+
+  "forms.spam-protection": ({ snapshot, rule }) => {
+    const blocked = gap(snapshot, "forms");
+    if (blocked) return finding(rule, "missing", blocked, "Grant the read scope for forms and run the audit again.");
+    if (snapshot.forms.some((form) => !form.archived && form.spamProtection === null)) {
+      return finding(rule, "missing", "Spam protection was not in the read response.", "Read the form configuration for CAPTCHA or a honeypot.");
+    }
+    const open = snapshot.forms.filter((form) => !form.archived && form.spamProtection === false);
+    if (open.length === 0) {
+      return finding(rule, "working", "Live forms have spam protection.", "Keep CAPTCHA or a honeypot on public forms.");
+    }
+    return finding(
+      rule,
+      "broken",
+      `${open.length} live form(s) have no spam protection.`,
+      "Turn on CAPTCHA or another spam control.",
+    );
+  },
+
+  "tracking.install-code": ({ snapshot, rule }) => {
+    const html = snapshot.tracking.html;
+    if (snapshot.tracking.fetchError) {
+      return finding(rule, "missing", snapshot.tracking.fetchError, "Publish a public URL and fetch it again.");
+    }
+    if (!html) {
+      return finding(rule, "missing", "No public page was fetched.", "Set a public site URL and run the audit again.");
+    }
+    const present = html.includes("js.hs-scripts.com") || html.includes("hs-script-loader");
+    if (present) {
+      return finding(rule, "working", "The public page includes the HubSpot tracking script.", "Keep the script in the shared layout.");
+    }
+    return finding(
+      rule,
+      "broken",
+      "The public page HTML does not include the HubSpot tracking script.",
+      "Add the portal tracking code to the site layout.",
+    );
+  },
+
+  "tracking.cookie-banner": ({ snapshot, rule }) => {
+    if (!snapshot.tracking.html) {
+      return finding(rule, "missing", "No public page was fetched.", "Fetch the public URL before judging the banner.");
+    }
+    if (snapshot.tracking.cookieBanner) {
+      return finding(rule, "working", "The public page marks a cookie or consent banner.", "Confirm the banner blocks non-essential cookies until consent.");
+    }
+    return finding(
+      rule,
+      "broken",
+      "The public page does not show a known cookie-banner marker.",
+      "Add a consent banner before non-essential HubSpot cookies load.",
+    );
+  },
+
+  "tracking.utm-capture": ({ snapshot, rule }) => {
+    if (snapshot.tracking.utmTotal === 0) {
+      return finding(rule, "missing", "No UTM properties were in the snapshot.", "Create utm_source, utm_medium, and utm_campaign properties.");
+    }
+    const ratio = snapshot.tracking.utmFilled / snapshot.tracking.utmTotal;
+    if (ratio >= num(rule.params, "minFillRatio", 0.5)) {
+      return finding(rule, "working", "UTM properties are filled on at least half of the sampled values.", "Keep hidden fields on campaign forms.");
+    }
+    return finding(
+      rule,
+      "missing",
+      "UTM properties exist but most sampled values are empty.",
+      "Pass UTM parameters into hidden form fields.",
+    );
+  },
+
+  "tracking.original-source": ({ snapshot, rule }) => {
+    if (snapshot.tracking.contactCount === 0) {
+      return finding(rule, "missing", "No contacts were sampled for original source.", "Sample contacts with hs_analytics_source.");
+    }
+    const ratio = snapshot.tracking.originalSourceFilled / snapshot.tracking.contactCount;
+    if (ratio >= num(rule.params, "minFillRatio", 0.8)) {
+      return finding(rule, "working", "Original source is filled on most sampled contacts.", "Do not overwrite original source on later form fills.");
+    }
+    return finding(
+      rule,
+      "broken",
+      "Original source is missing on too many sampled contacts.",
+      "Stop blank imports from clearing original source.",
+    );
+  },
+
+  "email.workflows-health": ({ snapshot, rule }) => {
+    const blocked = gap(snapshot, "workflows");
+    if (blocked) return finding(rule, "missing", blocked, "Grant the automation read scope and run the audit again.");
+    const flows = snapshot.workflows.filter((workflow) => workflow.kind === "workflow");
+    if (flows.length === 0) {
+      return finding(rule, "missing", "No workflows were returned.", "Create the operational workflows you expect, or confirm the automation scope.");
+    }
+    if (flows.some((workflow) => workflow.errored === null || workflow.enrolmentCount === null)) {
+      return finding(
+        rule,
+        "missing",
+        "Workflow error or enrolment counts were not in the read response.",
+        "Read flow errors and enrolment totals, then run the audit again.",
+      );
+    }
+    const errored = flows.filter((workflow) => workflow.errored === true);
+    const idle = flows.filter((workflow) => workflow.enabled && workflow.errored === false && workflow.enrolmentCount === 0);
+    if (errored.length === 0 && idle.length === 0 && flows.some((workflow) => workflow.enabled)) {
+      return finding(rule, "working", "Active workflows have enrolments and none are errored.", "Review error notifications monthly.");
+    }
+    if (errored.length > 0) {
+      return finding(
+        rule,
+        "broken",
+        `${errored.length} workflow(s) are in error. ${idle.length} active workflow(s) have no enrolment.`,
+        "Open the errored workflows and fix the failing action.",
+      );
+    }
+    return finding(
+      rule,
+      "broken",
+      `${idle.length} active workflow(s) have no enrolment.`,
+      "Fix the enrolment trigger or turn the workflow off.",
+    );
+  },
+
+  "email.nurture-sequence": ({ snapshot, rule }) => {
+    const blocked = gap(snapshot, "workflows");
+    if (blocked) return finding(rule, "missing", blocked, "Grant the automation read scope and run the audit again.");
+    const nurture = snapshot.workflows.filter((workflow) => workflow.kind === "nurture" && workflow.enabled);
+    if (nurture.length > 0) {
+      return finding(rule, "working", `${nurture.length} nurture sequence(s) are active.`, "Suppress nurtures when a contact becomes a customer.");
+    }
+    return finding(rule, "missing", "No active nurture sequence was found.", "Add one short nurture for new leads.");
+  },
+
+  "email.unengaged-handling": ({ snapshot, rule }) => {
+    const blocked = gap(snapshot, "workflows");
+    if (blocked) return finding(rule, "missing", blocked, "Grant the automation read scope and run the audit again.");
+    const handler = snapshot.workflows.filter((workflow) => workflow.kind === "unengaged" && workflow.enabled);
+    if (handler.length > 0) {
+      return finding(rule, "working", "An active workflow handles unengaged contacts.", "Suppress or delete contacts who never engage.");
+    }
+    return finding(rule, "missing", "No workflow handles unengaged contacts.", "Add a sunset workflow after a set number of unopened emails.");
+  },
+
+  "email.sender-authentication": ({ snapshot, rule }) => {
+    const blocked = gap(snapshot, "senders");
+    if (blocked) return finding(rule, "missing", blocked, "Read sender-domain authentication and run the audit again.");
+    if (snapshot.senderDomains.length === 0) {
+      return finding(rule, "missing", "No sender domain was returned.", "Connect the domain you send from.");
+    }
+    const weak = snapshot.senderDomains.filter(
+      (domain) => domain.spf !== "pass" || domain.dkim !== "pass" || domain.dmarc !== "pass",
+    );
+    if (weak.length === 0) {
+      return finding(rule, "working", "SPF, DKIM, and DMARC pass for every sender domain.", "Keep DMARC at quarantine or reject.");
+    }
+    return finding(
+      rule,
+      "broken",
+      `${weak.length} sender domain(s) are missing a pass on SPF, DKIM, or DMARC.`,
+      "Publish the missing DNS records before the next campaign.",
+    );
+  },
+
+  "integrations.connected-apps": ({ snapshot, rule }) => {
+    const blocked = gap(snapshot, "integrations");
+    if (blocked) return finding(rule, "missing", blocked, "Grant the integrations read scope and run the audit again.");
+    const connected = snapshot.integrations.filter((item) => item.connected);
+    if (connected.length > 0) {
+      return finding(rule, "working", `${connected.length} app(s) are connected.`, "Remove apps you no longer use.");
+    }
+    return finding(rule, "missing", "No connected app was returned.", "Connect the CRM tools you rely on, or ignore this if you use HubSpot alone.");
+  },
+
+  "integrations.webhook-subscriptions": ({ snapshot, rule }) => {
+    const blocked = gap(snapshot, "webhooks");
+    if (blocked) return finding(rule, "missing", blocked, "Grant the webhooks read scope and run the audit again.");
+    if (snapshot.webhooks.length === 0) {
+      return finding(rule, "missing", "No webhook subscription was returned.", "Subscribe to the events your integration needs.");
+    }
+    const inactive = snapshot.webhooks.filter((hook) => !hook.active);
+    if (inactive.length === 0) {
+      return finding(rule, "working", "Every webhook subscription is active.", "Alert on a rising error count.");
+    }
+    return finding(
+      rule,
+      "broken",
+      `${inactive.length} webhook subscription(s) are inactive.`,
+      "Repair or remove the inactive subscription.",
+    );
+  },
+
+  "integrations.sync-errors": ({ snapshot, rule }) => {
+    const blocked = gap(snapshot, "integrations");
+    if (blocked) return finding(rule, "missing", blocked, "Grant the integrations read scope and run the audit again.");
+    const badApps = snapshot.integrations.filter((item) => item.syncError);
+    const badHooks = snapshot.webhooks.filter((hook) => hook.errorCount > 0);
+    if (badApps.length === 0 && badHooks.length === 0) {
+      return finding(rule, "working", "No sync error was flagged on apps or webhooks.", "Check this after each integration change.");
+    }
+    return finding(
+      rule,
+      "broken",
+      `${badApps.length} app(s) and ${badHooks.length} webhook(s) report sync errors.`,
+      "Open the failing sync and replay or pause it.",
+    );
+  },
+
+  "reporting.dashboards": ({ snapshot, rule }) => {
+    const blocked = gap(snapshot, "reports");
+    if (blocked) return finding(rule, "missing", blocked, "Grant the reporting read scope and run the audit again.");
+    const dashboards = snapshot.reports.filter((report) => report.kind === "dashboard");
+    if (dashboards.length > 0) {
+      return finding(rule, "working", `${dashboards.length} dashboard(s) are present.`, "Keep one operating dashboard for the revenue team.");
+    }
+    return finding(rule, "missing", "No dashboard was returned.", "Create one dashboard for pipeline and lifecycle.");
+  },
+
+  "reporting.attribution": ({ snapshot, rule }) => {
+    const blocked = gap(snapshot, "reports");
+    if (blocked) return finding(rule, "missing", blocked, "Grant the reporting read scope and run the audit again.");
+    const reports = snapshot.reports.filter((report) => report.kind === "attribution");
+    if (reports.length > 0) {
+      return finding(rule, "working", `${reports.length} attribution report(s) are present.`, "Review the model when campaigns change.");
+    }
+    return finding(rule, "missing", "No attribution report was returned.", "Add an attribution report for paid and organic channels.");
+  },
+
+  "reporting.lifecycle-funnel": ({ snapshot, rule }) => {
+    const blocked = gap(snapshot, "reports");
+    if (blocked) return finding(rule, "missing", blocked, "Grant the reporting read scope and run the audit again.");
+    const reports = snapshot.reports.filter((report) => report.kind === "lifecycle-funnel");
+    if (reports.length > 0) {
+      return finding(rule, "working", `${reports.length} lifecycle funnel report(s) are present.`, "Use the same stage names as the CRM properties.");
+    }
+    return finding(rule, "missing", "No lifecycle funnel report was returned.", "Build a funnel from subscriber to customer.");
+  },
+};
+
+export function runCheck(rule: CheckRule, snapshot: PortalSnapshot): Finding {
+  const fn = checks[rule.id];
+  if (!fn) {
+    return finding(
+      rule,
+      "missing",
+      `No check implementation is registered for ${rule.id}.`,
+      "Add a function for this id, or remove the YAML entry.",
+    );
+  }
+  return fn({ snapshot, rule });
+}

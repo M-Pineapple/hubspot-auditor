@@ -1,0 +1,19 @@
+version: 1
+auditor: tracking
+checks:
+  - id: tracking.install-code
+    title: Tracking code on the public site
+    severity: critical
+  - id: tracking.cookie-banner
+    title: Cookie banner
+    severity: high
+  - id: tracking.utm-capture
+    title: UTM capture
+    severity: medium
+    params:
+      minFillRatio: 0.5
+  - id: tracking.original-source
+    title: Original source attribution
+    severity: high
+    params:
+      minFillRatio: 0.8

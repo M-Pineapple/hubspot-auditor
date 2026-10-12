@@ -1,0 +1,24 @@
+version: 1
+auditor: pipelines
+checks:
+  - id: pipelines.stage-probabilities
+    title: Deal stage probabilities
+    severity: medium
+    params:
+      lateStageMinProbability: 40
+  - id: pipelines.stale-deals
+    title: Stale deals
+    severity: high
+    params:
+      staleDays: 30
+  - id: pipelines.required-fields
+    title: Required fields per stage
+    severity: medium
+    params:
+      properties: [dealname, amount]
+  - id: pipelines.stage-automation
+    title: Automation on stage change
+    severity: medium
+  - id: pipelines.ticket-pipeline
+    title: Ticket pipeline
+    severity: low

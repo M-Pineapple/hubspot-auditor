@@ -1,0 +1,12 @@
+version: 1
+auditor: reporting
+checks:
+  - id: reporting.dashboards
+    title: Dashboards
+    severity: medium
+  - id: reporting.attribution
+    title: Attribution reports
+    severity: medium
+  - id: reporting.lifecycle-funnel
+    title: Lifecycle funnel
+    severity: high

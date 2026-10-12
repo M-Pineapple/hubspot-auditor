@@ -1,0 +1,77 @@
+{
+  "portalName": "Harbour Glass Co",
+  "fictional": true,
+  "contacts": [
+    {"id": "c1", "email": "ada@harbourglass.example", "lifecycleStage": "lead", "leadStatus": "NEW"},
+    {"id": "c2", "email": "ada@harbourglass.example", "lifecycleStage": "lead", "leadStatus": "OPEN"},
+    {"id": "c3", "email": null, "lifecycleStage": "subscriber", "leadStatus": "NEW"},
+    {"id": "c4", "email": "sam@harbourglass.example", "lifecycleStage": "customer", "leadStatus": "NEW"},
+    {"id": "c5", "email": "jo@harbourglass.example", "lifecycleStage": "opportunity", "leadStatus": "IN_PROGRESS"}
+  ],
+  "companies": [
+    {"id": "co1", "domain": "northpier.example"},
+    {"id": "co2", "domain": "northpier.example"},
+    {"id": "co3", "domain": "lumenyard.example"}
+  ],
+  "properties": [
+    {"objectType": "contacts", "name": "email", "label": "Email", "custom": false, "required": true, "filledCount": 4, "totalCount": 5},
+    {"objectType": "contacts", "name": "firstname", "label": "First name", "custom": false, "required": true, "filledCount": 5, "totalCount": 5},
+    {"objectType": "contacts", "name": "favourite_glass", "label": "Favourite glass", "custom": true, "required": false, "filledCount": 0, "totalCount": 5}
+  ],
+  "pipelines": [
+    {
+      "objectType": "deals",
+      "id": "deals-main",
+      "label": "Sales",
+      "stages": [
+        {"id": "new", "label": "New", "probability": 10, "requiredProperties": ["dealname"]},
+        {"id": "quote", "label": "Quote", "probability": 20, "requiredProperties": ["dealname"]}
+      ],
+      "automatedStageIds": []
+    },
+    {
+      "objectType": "tickets",
+      "id": "support",
+      "label": "Support",
+      "stages": [
+        {"id": "open", "label": "Open", "probability": null, "requiredProperties": []}
+      ],
+      "automatedStageIds": ["open"]
+    }
+  ],
+  "deals": [
+    {"id": "d1", "pipelineId": "deals-main", "stageId": "new", "daysSinceUpdate": 45},
+    {"id": "d2", "pipelineId": "deals-main", "stageId": "quote", "daysSinceUpdate": 3}
+  ],
+  "forms": [
+    {"id": "f1", "name": "Demo request", "archived": false, "embedded": true, "unmappedFields": 1, "gdprConsent": false, "followUpEmail": false, "spamProtection": false},
+    {"id": "f2", "name": "Old quiz", "archived": false, "embedded": false, "unmappedFields": 0, "gdprConsent": true, "followUpEmail": false, "spamProtection": true}
+  ],
+  "tracking": {
+    "publicSiteUrl": "https://harbourglass.example",
+    "html": "<html><body><p>Welcome</p></body></html>",
+    "fetchError": null,
+    "cookieBanner": false,
+    "utmFilled": 1,
+    "utmTotal": 5,
+    "originalSourceFilled": 2,
+    "contactCount": 5
+  },
+  "workflows": [
+    {"id": "w1", "name": "Notify owner", "enabled": true, "errored": true, "enrolmentCount": 4, "kind": "workflow"},
+    {"id": "w2", "name": "Quiet welcome", "enabled": true, "errored": false, "enrolmentCount": 0, "kind": "workflow"}
+  ],
+  "senderDomains": [
+    {"domain": "harbourglass.example", "spf": "pass", "dkim": "fail", "dmarc": "missing"}
+  ],
+  "integrations": [
+    {"id": "i1", "name": "Ledger", "connected": true, "syncError": true}
+  ],
+  "webhooks": [
+    {"id": "h1", "eventType": "contact.creation", "active": false, "errorCount": 3}
+  ],
+  "reports": [
+    {"id": "r1", "name": "Weekly operating", "kind": "dashboard"}
+  ],
+  "fetchGaps": []
+}

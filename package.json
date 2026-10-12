@@ -1,0 +1,28 @@
+{
+  "name": "hubspot-auditor",
+  "version": "1.0.0",
+  "description": "Read-only MCP server that audits a HubSpot portal and reports what works, what is broken, and what is missing.",
+  "type": "module",
+  "license": "MIT",
+  "bin": {
+    "hubspot-auditor": "./src/cli.ts"
+  },
+  "scripts": {
+    "start": "node --experimental-strip-types src/server.ts",
+    "audit:demo": "node --experimental-strip-types src/cli.ts --demo --at 2026-10-12T00:00:00.000Z --out examples",
+    "test": "node --experimental-strip-types --test tests/*.test.ts"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.17.0",
+    "js-yaml": "^4.1.0",
+    "zod": "^3.25.0"
+  },
+  "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^24.0.0",
+    "typescript": "^5.9.0"
+  }
+}

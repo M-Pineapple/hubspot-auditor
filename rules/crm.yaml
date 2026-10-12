@@ -1,0 +1,29 @@
+version: 1
+auditor: crm
+checks:
+  - id: crm.duplicate-contacts
+    title: Duplicate contacts
+    severity: high
+    params:
+      minGroupSize: 2
+  - id: crm.duplicate-companies
+    title: Duplicate companies
+    severity: high
+  - id: crm.missing-required-properties
+    title: Required properties filled
+    severity: high
+    params:
+      names: [email, firstname]
+      minFillRatio: 0.9
+  - id: crm.unused-custom-properties
+    title: Unused custom properties
+    severity: low
+    params:
+      maxFilled: 0
+  - id: crm.lifecycle-lead-status
+    title: Lifecycle and lead status
+    severity: medium
+    params:
+      conflicts:
+        - customer|NEW
+        - subscriber|OPEN_DEAL

@@ -1,0 +1,21 @@
+version: 1
+auditor: forms
+checks:
+  - id: forms.live-forms
+    title: Live forms
+    severity: high
+  - id: forms.unused-forms
+    title: Unused forms
+    severity: low
+  - id: forms.field-mapping
+    title: Form field mapping
+    severity: high
+  - id: forms.gdpr-consent
+    title: GDPR consent on forms
+    severity: critical
+  - id: forms.follow-up-email
+    title: Follow-up email
+    severity: medium
+  - id: forms.spam-protection
+    title: Spam protection
+    severity: high

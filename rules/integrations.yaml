@@ -1,0 +1,12 @@
+version: 1
+auditor: integrations
+checks:
+  - id: integrations.connected-apps
+    title: Connected apps
+    severity: low
+  - id: integrations.webhook-subscriptions
+    title: Webhook subscriptions
+    severity: medium
+  - id: integrations.sync-errors
+    title: Sync errors
+    severity: high

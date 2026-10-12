@@ -1,0 +1,15 @@
+version: 1
+auditor: email
+checks:
+  - id: email.workflows-health
+    title: Workflow health
+    severity: high
+  - id: email.nurture-sequence
+    title: Nurture sequence
+    severity: medium
+  - id: email.unengaged-handling
+    title: Unengaged contacts
+    severity: medium
+  - id: email.sender-authentication
+    title: Sender domain authentication
+    severity: critical
