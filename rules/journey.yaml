@@ -1,0 +1,22 @@
+version: 1
+auditor: journey
+checks:
+  - id: journey.stage-hooks
+    title: Email hooks by buyer stage
+    severity: high
+    params:
+      stages:
+        - stage: subscriber
+          patterns: ["welcome", "confirm", "newsletter"]
+        - stage: lead
+          patterns: ["intro", "guide", "new lead"]
+        - stage: marketingqualifiedlead
+          patterns: ["nurture", "webinar", "case study"]
+        - stage: salesqualifiedlead
+          patterns: ["meeting", "demo", "pricing"]
+        - stage: opportunity
+          patterns: ["proposal", "quote", "follow up", "follow-up"]
+        - stage: customer
+          patterns: ["onboarding", "getting started", "thank you"]
+        - stage: evangelist
+          patterns: ["re-engage", "reengage", "win back", "we miss"]

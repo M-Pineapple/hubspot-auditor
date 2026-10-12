@@ -1,4 +1,5 @@
-import type { FetchGap, FormDef, PortalSnapshot, Workflow } from "../types.ts";
+import type { FetchGap, FormDef, LandingPage, MarketingEmail, PortalSnapshot, Workflow } from "../types.ts";
+import { loadRules } from "../rules.ts";
 import { HubSpotReadClient } from "./client.ts";
 
 interface Page<T> {
@@ -30,6 +31,36 @@ interface RawPipeline {
   stages?: RawStage[];
 }
 
+interface RawLandingPage {
+  id: string;
+  name?: string;
+  state?: string;
+  htmlTitle?: string;
+  metaDescription?: string;
+  url?: string;
+  campaign?: string;
+  campaignName?: string;
+}
+
+interface RawEmail {
+  id: string;
+  name?: string;
+  subject?: string;
+  subjectLine?: string;
+  state?: string;
+  currentState?: string;
+  isPublished?: boolean;
+  campaign?: string;
+  campaignName?: string;
+}
+
+interface RawList {
+  listId?: string;
+  id?: string;
+  name?: string;
+  processingType?: string;
+}
+
 interface RawForm {
   id: string;
   name: string;
@@ -37,6 +68,34 @@ interface RawForm {
   fieldGroups?: { fields?: { name?: string }[] }[];
   configuration?: { recaptchaEnabled?: boolean };
   legalConsentOptions?: unknown;
+}
+
+function sampledContactProperties(): string[] {
+  const names = new Set([
+    "email",
+    "firstname",
+    "lifecyclestage",
+    "hs_lead_status",
+    "hs_analytics_source",
+    "hs_predictivecontactscore",
+    "hubspotscore",
+    "utm_source",
+    "utm_medium",
+    "utm_campaign",
+  ]);
+  for (const rule of loadRules()) {
+    if (rule.id !== "crm.missing-required-properties" && rule.id !== "program.lead-score") continue;
+    const extra = rule.params.names;
+    if (Array.isArray(extra)) for (const name of extra) names.add(String(name));
+  }
+  return [...names];
+}
+
+function emailPublished(raw: { isPublished?: boolean; state?: string; currentState?: string }): boolean {
+  if (typeof raw.isPublished === "boolean") return raw.isPublished;
+  const state = String(raw.state ?? raw.currentState ?? "");
+  if (/DRAFT|ARCHIVED/i.test(state)) return false;
+  return /PUBLISH|AUTOMATED|SCHEDULED/i.test(state);
 }
 
 function daysSince(value: string | null | undefined): number {
@@ -123,16 +182,17 @@ export async function loadPortal(
   const client = new HubSpotReadClient(token, fetchImpl);
   const gaps: FetchGap[] = [];
   const account = await tryGet<{ portalId?: number }>(client, "/account-info/v3/details", "account", gaps);
+  const contactProperties = sampledContactProperties();
   const contacts = await listAll<RawObject>(
     client,
-    "/crm/v3/objects/contacts?properties=email,lifecyclestage,hs_lead_status,hs_analytics_source",
+    `/crm/v3/objects/contacts?properties=${contactProperties.join(",")}`,
     "contacts",
     gaps,
   );
   const companies = await listAll<RawObject>(client, "/crm/v3/objects/companies?properties=domain", "companies", gaps);
   const properties = await tryGet<{ results?: RawProperty[] }>(client, "/crm/v3/properties/contacts", "properties", gaps);
-  const dealPipelines = await tryGet<{ results?: RawPipeline[] }>(client, "/crm/v3/pipelines/deals", "pipelines", gaps);
-  const ticketPipelines = await tryGet<{ results?: RawPipeline[] }>(client, "/crm/v3/pipelines/tickets", "pipelines", gaps);
+  const dealPipelines = await tryGet<{ results?: RawPipeline[] }>(client, "/crm/v3/pipelines/deals", "pipelines-deals", gaps);
+  const ticketPipelines = await tryGet<{ results?: RawPipeline[] }>(client, "/crm/v3/pipelines/tickets", "pipelines-tickets", gaps);
   const deals = await listAll<RawObject>(
     client,
     "/crm/v3/objects/deals?properties=pipeline,dealstage,hs_lastmodifieddate",
@@ -152,7 +212,24 @@ export async function loadPortal(
     gaps,
   );
 
-  gaps.push({ area: "stage-automation", path: "/crm/v3/pipelines/deals", status: 0 });
+  const landingResult = await tryGet<{ results?: RawLandingPage[] }>(client, "/cms/v3/pages/landing-pages", "landing-pages", gaps);
+  const sitePages = await client.get<{ results?: RawLandingPage[] }>("/cms/v3/pages/site-pages").catch(() => null);
+  if (landingResult && sitePages?.results?.length) {
+    landingResult.results = [...(landingResult.results ?? []), ...sitePages.results];
+  }
+  const pageList = landingResult ?? (sitePages?.results?.length ? { results: sitePages.results } : null);
+  if (!landingResult && pageList) {
+    const index = gaps.findIndex((gap) => gap.area === "landing-pages");
+    if (index >= 0) gaps.splice(index, 1);
+  }
+  const emailList = await tryGet<{ results?: RawEmail[] }>(client, "/marketing/v3/emails", "emails", gaps);
+  const listPage = await tryGet<{ lists?: RawList[]; results?: RawList[] }>(client, "/crm/v3/lists", "lists", gaps);
+  const subscriptionPage = await tryGet<{ results?: { id: string; name: string }[] }>(
+    client,
+    "/communication-preferences/v3/definitions",
+    "subscriptions",
+    gaps,
+  );
   await noteUnmapped(client, "/marketing/v3/domains", "senders", gaps);
   await noteUnmapped(client, "/integrations/v1/me", "integrations", gaps);
   await noteUnmapped(client, "/webhooks/v3/subscriptions", "webhooks", gaps);
@@ -160,7 +237,39 @@ export async function loadPortal(
 
   const contactRows = contacts ?? [];
   const contactProps = properties?.results ?? [];
+  const sampled = new Set(contactProperties);
   const filled = (name: string) => contactRows.filter((contact) => (contact.properties?.[name] ?? "").trim() !== "").length;
+  const utmNames = ["utm_source", "utm_medium", "utm_campaign"].filter((name) => contactProps.some((property) => property.name === name));
+  const landingPages: LandingPage[] = [];
+  for (const page of (pageList?.results ?? []).slice(0, 20)) {
+    let html: string | null = null;
+    if (page.url) {
+      try {
+        assertPublicFetch(page.url);
+        const response = await fetchImpl(page.url, { method: "GET" });
+        html = response.ok ? await response.text() : null;
+      } catch {
+        html = null;
+      }
+    }
+    landingPages.push({
+      id: page.id,
+      name: page.name ?? page.id,
+      published: String(page.state ?? "").toUpperCase().includes("PUBLISH"),
+      metaTitle: page.htmlTitle ?? null,
+      metaDescription: page.metaDescription ?? null,
+      html,
+      hasCampaign: Boolean(page.campaign || page.campaignName),
+    });
+  }
+  const emails: MarketingEmail[] = (emailList?.results ?? []).map((email) => ({
+    id: email.id,
+    name: email.name ?? email.id,
+    subject: email.subject ?? email.subjectLine ?? null,
+    published: emailPublished(email),
+    hasCampaign: Boolean(email.campaign || email.campaignName),
+  }));
+  const listRows = listPage?.results ?? listPage?.lists ?? [];
 
   let html: string | null = null;
   let fetchError: string | null = null;
@@ -185,6 +294,7 @@ export async function loadPortal(
       requiredProperties: stage.requiredProperties ?? [],
     })),
     automatedStageIds: [] as string[],
+    automationKnown: false,
   });
 
   const workflows: Workflow[] = (flows?.results ?? []).map((flow) => ({
@@ -215,7 +325,7 @@ export async function loadPortal(
       label: property.label,
       custom: property.hubspotDefined === false,
       required: property.name === "email",
-      filledCount: filled(property.name),
+      filledCount: sampled.has(property.name) ? filled(property.name) : null,
       totalCount: contactRows.length,
     })),
     pipelines: [
@@ -228,14 +338,14 @@ export async function loadPortal(
       stageId: deal.properties?.dealstage ?? "",
       daysSinceUpdate: daysSince(deal.properties?.hs_lastmodifieddate),
     })),
-    forms: forms.map((form) => mapForm(form, html)),
+    forms: forms.map((form) => mapForm(form, [html, ...landingPages.map((page) => page.html)].filter(Boolean).join("\n") || null)),
     tracking: {
       publicSiteUrl: publicSiteUrl ?? null,
       html,
       fetchError,
       cookieBanner: html ? /cookie|consent|onetrust|cookiebot/i.test(html) : false,
-      utmFilled: 0,
-      utmTotal: 0,
+      utmFilled: utmNames.reduce((sum, name) => sum + filled(name), 0),
+      utmTotal: utmNames.length === 0 ? 0 : utmNames.length * contactRows.length,
       originalSourceFilled: contactRows.filter((contact) => (contact.properties?.hs_analytics_source ?? "").trim() !== "")
         .length,
       contactCount: contactRows.length,
@@ -245,6 +355,14 @@ export async function loadPortal(
     integrations: [],
     webhooks: [],
     reports: [],
+    landingPages,
+    emails,
+    lists: listRows.map((list) => ({
+      id: String(list.listId ?? list.id ?? ""),
+      name: list.name ?? "",
+      dynamic: String(list.processingType ?? "").toUpperCase() === "DYNAMIC",
+    })),
+    subscriptionTypes: (subscriptionPage?.results ?? []).map((item) => ({ id: String(item.id), name: item.name })),
     fetchGaps: gaps,
   };
 }

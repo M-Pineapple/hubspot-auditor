@@ -1,0 +1,17 @@
+version: 1
+auditor: program
+checks:
+  - id: program.dynamic-lists
+    title: Dynamic lists
+    severity: medium
+  - id: program.lead-score
+    title: Lead score
+    severity: medium
+    params:
+      names: [hs_predictivecontactscore, hubspotscore]
+  - id: program.subscription-types
+    title: Email subscription types
+    severity: high
+  - id: program.campaigns
+    title: Campaign links on live assets
+    severity: medium

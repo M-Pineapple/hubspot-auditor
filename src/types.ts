@@ -38,7 +38,7 @@ export interface PropertyDef {
   label: string;
   custom: boolean;
   required: boolean;
-  filledCount: number;
+  filledCount: number | null;
   totalCount: number;
 }
 
@@ -55,6 +55,7 @@ export interface Pipeline {
   label: string;
   stages: Stage[];
   automatedStageIds: string[];
+  automationKnown?: boolean;
 }
 
 export interface Deal {
@@ -122,6 +123,35 @@ export interface ReportAsset {
   kind: "dashboard" | "attribution" | "lifecycle-funnel";
 }
 
+export interface LandingPage {
+  id: string;
+  name: string;
+  published: boolean;
+  metaTitle: string | null;
+  metaDescription: string | null;
+  html: string | null;
+  hasCampaign: boolean;
+}
+
+export interface MarketingEmail {
+  id: string;
+  name: string;
+  subject: string | null;
+  published: boolean;
+  hasCampaign: boolean;
+}
+
+export interface ContactList {
+  id: string;
+  name: string;
+  dynamic: boolean;
+}
+
+export interface SubscriptionType {
+  id: string;
+  name: string;
+}
+
 export interface FetchGap {
   area: string;
   path: string;
@@ -143,5 +173,9 @@ export interface PortalSnapshot {
   integrations: Integration[];
   webhooks: WebhookSub[];
   reports: ReportAsset[];
+  landingPages: LandingPage[];
+  emails: MarketingEmail[];
+  lists: ContactList[];
+  subscriptionTypes: SubscriptionType[];
   fetchGaps: FetchGap[];
 }

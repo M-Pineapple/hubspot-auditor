@@ -7,7 +7,7 @@ import { loadPortal } from "./hubspot/load.ts";
 import { loadRules } from "./rules.ts";
 import { audit, reportToJson, reportToMarkdown } from "./report.ts";
 
-const server = new McpServer({ name: "HubSpot Auditor", version: "1.0.0" });
+const server = new McpServer({ name: "HubSpot Auditor", version: "1.1.0" });
 
 server.registerTool(
   "list_checks",

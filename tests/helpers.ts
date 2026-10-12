@@ -29,6 +29,10 @@ export function snapshot(partial: Partial<PortalSnapshot> = {}): PortalSnapshot 
     integrations: [],
     webhooks: [],
     reports: [],
+    landingPages: [],
+    emails: [],
+    lists: [],
+    subscriptionTypes: [],
     fetchGaps: [],
     ...partial,
   };

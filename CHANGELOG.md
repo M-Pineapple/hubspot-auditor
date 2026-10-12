@@ -1,7 +1,29 @@
 # Changelog
 
+All notable changes to HubSpot Auditor are documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [1.1.0] - 2026-10-12
+
+### Added
+
+- Landing page checks for a published page, title, meta description, tracking script, and call to action.
+- Optional brand markers in `rules/brand.yaml`. The check stays missing until you set your own markers.
+- Buyer-journey email hooks in `rules/journey.yaml`. Each stage looks for a published email or an active workflow.
+- Program checks for dynamic lists, lead score, email subscription types, and campaign links.
+
+### Fixed
+
+- A failed ticket-pipeline read no longer hides deal pipeline checks.
+- Contact fill rates count only properties that were requested. An unsampled property is not treated as empty.
+- The audit does not choose a company domain as the public site. Pass `--site` for that check. Landing pages use their own CMS URL.
+
 ## [1.0.0] - 2026-10-12
 
+### Added
+
 - Read-only HubSpot audit over stdio MCP and a local CLI.
-- Seven auditors: CRM, pipelines, forms, tracking, email, integrations, reporting.
+- Auditors for CRM, pipelines, forms, tracking, email, integrations, and reporting.
 - Versioned YAML checks, a fictional demo portal, and a scored Markdown and JSON report with a 30/60/90-day plan.

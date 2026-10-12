@@ -9,7 +9,10 @@ import { rule, snapshot } from "./helpers.ts";
 test("every YAML check has an implementation and a demo finding", () => {
   const rules = loadRules();
   const auditors = new Set(rules.map((item) => item.auditor));
-  assert.deepEqual([...auditors].sort(), ["crm", "email", "forms", "integrations", "pipelines", "reporting", "tracking"]);
+  assert.deepEqual(
+    [...auditors].sort(),
+    ["brand", "crm", "email", "forms", "integrations", "journey", "pipelines", "program", "reporting", "tracking"],
+  );
   for (const item of rules) assert.equal(typeof checks[item.id], "function", item.id);
   const report = audit(loadDemoPortal(), "2026-10-12T00:00:00.000Z");
   assert.equal(report.findings.length, rules.length);

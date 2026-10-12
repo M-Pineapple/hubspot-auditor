@@ -27,7 +27,8 @@
         {"id": "new", "label": "New", "probability": 10, "requiredProperties": ["dealname"]},
         {"id": "quote", "label": "Quote", "probability": 20, "requiredProperties": ["dealname"]}
       ],
-      "automatedStageIds": []
+      "automatedStageIds": [],
+      "automationKnown": true
     },
     {
       "objectType": "tickets",
@@ -36,7 +37,8 @@
       "stages": [
         {"id": "open", "label": "Open", "probability": null, "requiredProperties": []}
       ],
-      "automatedStageIds": ["open"]
+      "automatedStageIds": ["open"],
+      "automationKnown": true
     }
   ],
   "deals": [
@@ -73,5 +75,23 @@
   "reports": [
     {"id": "r1", "name": "Weekly operating", "kind": "dashboard"}
   ],
+  "landingPages": [
+    {
+      "id": "p1",
+      "name": "Studio tour",
+      "published": true,
+      "metaTitle": "Tour the studio",
+      "metaDescription": null,
+      "html": "<html><a class=\"hs-button\" href=\"/book\">Book</a></html>",
+      "hasCampaign": false
+    }
+  ],
+  "emails": [
+    {"id": "e1", "name": "Welcome note", "subject": "Welcome to the list", "published": true, "hasCampaign": false}
+  ],
+  "lists": [
+    {"id": "l1", "name": "All contacts", "dynamic": false}
+  ],
+  "subscriptionTypes": [],
   "fetchGaps": []
 }

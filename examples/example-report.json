@@ -2,11 +2,11 @@
   "portalName": "Harbour Glass Co",
   "fictional": true,
   "generatedAt": "2026-10-12T00:00:00.000Z",
-  "score": 13,
+  "score": 15,
   "counts": {
-    "working": 4,
-    "broken": 16,
-    "missing": 10
+    "working": 6,
+    "broken": 20,
+    "missing": 14
   },
   "findings": [
     {
@@ -35,6 +35,33 @@
       "title": "Tracking code on the public site",
       "evidence": "The public page HTML does not include the HubSpot tracking script.",
       "recommendedFix": "Add the portal tracking code to the site layout."
+    },
+    {
+      "id": "brand.page-cta",
+      "auditor": "brand",
+      "status": "working",
+      "severity": "high",
+      "title": "Landing page call to action",
+      "evidence": "Published landing pages include a call to action.",
+      "recommendedFix": "Point the action at one form or one meeting link."
+    },
+    {
+      "id": "brand.page-tracking",
+      "auditor": "brand",
+      "status": "broken",
+      "severity": "high",
+      "title": "Tracking on landing pages",
+      "evidence": "1 published landing page(s) have no tracking script.",
+      "recommendedFix": "Add the portal tracking code to the landing page template."
+    },
+    {
+      "id": "brand.published-pages",
+      "auditor": "brand",
+      "status": "working",
+      "severity": "high",
+      "title": "Published landing pages",
+      "evidence": "1 landing page(s) are published.",
+      "recommendedFix": "Keep a draft only while it is still being edited."
     },
     {
       "id": "crm.duplicate-companies",
@@ -109,6 +136,15 @@
       "recommendedFix": "Open the failing sync and replay or pause it."
     },
     {
+      "id": "journey.stage-hooks",
+      "auditor": "journey",
+      "status": "broken",
+      "severity": "high",
+      "title": "Email hooks by buyer stage",
+      "evidence": "6 journey stage(s) have no matching published email: lead, marketingqualifiedlead, salesqualifiedlead, opportunity, customer, evangelist.",
+      "recommendedFix": "Add one email or workflow for each uncovered stage."
+    },
+    {
       "id": "pipelines.stale-deals",
       "auditor": "pipelines",
       "status": "broken",
@@ -116,6 +152,15 @@
       "title": "Stale deals",
       "evidence": "1 sampled deal(s) have not been updated for 30 days or more.",
       "recommendedFix": "Create a workflow that tasks the owner when a deal goes stale."
+    },
+    {
+      "id": "program.subscription-types",
+      "auditor": "program",
+      "status": "missing",
+      "severity": "high",
+      "title": "Email subscription types",
+      "evidence": "No email subscription type was returned.",
+      "recommendedFix": "Create subscription types before the next marketing send."
     },
     {
       "id": "reporting.lifecycle-funnel",
@@ -143,6 +188,24 @@
       "title": "Original source attribution",
       "evidence": "Original source is missing on too many sampled contacts.",
       "recommendedFix": "Stop blank imports from clearing original source."
+    },
+    {
+      "id": "brand.markers",
+      "auditor": "brand",
+      "status": "missing",
+      "severity": "medium",
+      "title": "Brand markers on landing pages",
+      "evidence": "No brand markers are configured.",
+      "recommendedFix": "Add phrases, colour tokens, or asset names under params.markers."
+    },
+    {
+      "id": "brand.page-meta",
+      "auditor": "brand",
+      "status": "broken",
+      "severity": "medium",
+      "title": "Landing page titles and descriptions",
+      "evidence": "1 published landing page(s) are missing a title or meta description.",
+      "recommendedFix": "Fill the HTML title and meta description before the next campaign."
     },
     {
       "id": "crm.lifecycle-lead-status",
@@ -195,7 +258,7 @@
       "status": "missing",
       "severity": "medium",
       "title": "Required fields per stage",
-      "evidence": "2 pipeline(s) have a stage that does not require the configured fields.",
+      "evidence": "1 pipeline(s) have a stage that does not require the configured fields.",
       "recommendedFix": "Mark those properties required before a record can enter the stage."
     },
     {
@@ -215,6 +278,33 @@
       "title": "Deal stage probabilities",
       "evidence": "1 later deal stage(s) are below 40% probability.",
       "recommendedFix": "Set a realistic probability on each open stage."
+    },
+    {
+      "id": "program.campaigns",
+      "auditor": "program",
+      "status": "broken",
+      "severity": "medium",
+      "title": "Campaign links on live assets",
+      "evidence": "2 published page or email asset(s) have no campaign.",
+      "recommendedFix": "Attach each live asset to a campaign."
+    },
+    {
+      "id": "program.dynamic-lists",
+      "auditor": "program",
+      "status": "missing",
+      "severity": "medium",
+      "title": "Dynamic lists",
+      "evidence": "No dynamic list was returned.",
+      "recommendedFix": "Build dynamic lists for the stages you email."
+    },
+    {
+      "id": "program.lead-score",
+      "auditor": "program",
+      "status": "missing",
+      "severity": "medium",
+      "title": "Lead score",
+      "evidence": "No lead-score property was returned.",
+      "recommendedFix": "Turn on predictive lead scoring or name your score property in the YAML."
     },
     {
       "id": "reporting.attribution",
@@ -287,6 +377,7 @@
         "critical: Sender domain authentication. Publish the missing DNS records before the next campaign.",
         "critical: GDPR consent on forms. Add a consent checkbox and store the lawful basis.",
         "critical: Tracking code on the public site. Add the portal tracking code to the site layout.",
+        "high: Tracking on landing pages. Add the portal tracking code to the landing page template.",
         "high: Duplicate companies. Merge companies that share a domain.",
         "high: Duplicate contacts. Merge the duplicate contacts and turn on a create-time duplicate rule.",
         "high: Required properties filled. Make the thin properties required on the create forms and backfill the blanks.",
@@ -294,6 +385,7 @@
         "high: Form field mapping. Map each field to a contact or company property.",
         "high: Spam protection. Turn on CAPTCHA or another spam control.",
         "high: Sync errors. Open the failing sync and replay or pause it.",
+        "high: Email hooks by buyer stage. Add one email or workflow for each uncovered stage.",
         "high: Stale deals. Create a workflow that tasks the owner when a deal goes stale.",
         "high: Cookie banner. Add a consent banner before non-essential HubSpot cookies load.",
         "high: Original source attribution. Stop blank imports from clearing original source."
@@ -302,20 +394,26 @@
     {
       "days": 60,
       "items": [
+        "medium: Landing page titles and descriptions. Fill the HTML title and meta description before the next campaign.",
         "medium: Lifecycle and lead status. Clear the conflicting lead status when lifecycle stage changes.",
         "medium: Webhook subscriptions. Repair or remove the inactive subscription.",
         "medium: Deal stage probabilities. Set a realistic probability on each open stage.",
+        "medium: Campaign links on live assets. Attach each live asset to a campaign.",
+        "high: Email subscription types. Create subscription types before the next marketing send.",
         "high: Lifecycle funnel. Build a funnel from subscriber to customer."
       ]
     },
     {
       "days": 90,
       "items": [
+        "medium: Brand markers on landing pages. Add phrases, colour tokens, or asset names under params.markers.",
         "medium: Nurture sequence. Add one short nurture for new leads.",
         "medium: Unengaged contacts. Add a sunset workflow after a set number of unopened emails.",
         "medium: Follow-up email. Add a follow-up email or a workflow enrolment on submit.",
         "medium: Required fields per stage. Mark those properties required before a record can enter the stage.",
         "medium: Automation on stage change. Add a workflow or stage action for the first handoff stage.",
+        "medium: Dynamic lists. Build dynamic lists for the stages you email.",
+        "medium: Lead score. Turn on predictive lead scoring or name your score property in the YAML.",
         "medium: Attribution reports. Add an attribution report for paid and organic channels.",
         "medium: UTM capture. Pass UTM parameters into hidden form fields.",
         "low: Unused custom properties. Archive unused properties or start collecting them on a form.",

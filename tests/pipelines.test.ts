@@ -32,6 +32,27 @@ test("pipelines flag weak probabilities, stale deals, and missing stage fields",
   assert.equal(runCheck(rule("pipelines.required-fields", "pipelines", { properties: ["dealname", "amount"] }), portal).status, "missing");
 });
 
+test("a ticket pipeline failure does not hide deal stage probabilities", () => {
+  const portal = snapshot({
+    fetchGaps: [{ area: "pipelines-tickets", path: "/crm/v3/pipelines/tickets", status: 403 }],
+    pipelines: [
+      {
+        objectType: "deals",
+        id: "sales",
+        label: "Sales",
+        stages: [
+          { id: "new", label: "New", probability: 10, requiredProperties: ["dealname", "amount"] },
+          { id: "quote", label: "Quote", probability: 60, requiredProperties: ["dealname", "amount"] },
+        ],
+        automatedStageIds: ["quote"],
+        automationKnown: true,
+      },
+    ],
+  });
+  assert.equal(runCheck(rule("pipelines.stage-probabilities", "pipelines", { lateStageMinProbability: 40 }), portal).status, "working");
+  assert.equal(runCheck(rule("pipelines.ticket-pipeline", "pipelines"), portal).status, "missing");
+});
+
 test("pipelines do not call an empty deal sample healthy", () => {
   assert.equal(runCheck(rule("pipelines.stale-deals", "pipelines"), snapshot()).status, "missing");
 });

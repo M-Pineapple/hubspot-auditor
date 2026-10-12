@@ -47,6 +47,16 @@ test("crm flags thin required properties and unused custom properties", () => {
   assert.equal(runCheck(rule("crm.unused-custom-properties", "crm"), portal).status, "missing");
 });
 
+test("crm does not treat an unsampled property as empty", () => {
+  const portal = snapshot({
+    properties: [
+      { objectType: "contacts", name: "email", label: "Email", custom: false, required: true, filledCount: 4, totalCount: 4 },
+      { objectType: "contacts", name: "firstname", label: "First name", custom: false, required: true, filledCount: null, totalCount: 4 },
+    ],
+  });
+  assert.equal(runCheck(rule("crm.missing-required-properties", "crm", { names: ["email", "firstname"], minFillRatio: 0.9 }), portal).status, "working");
+});
+
 test("crm flags a conflicting lifecycle pair", () => {
   const finding = runCheck(
     rule("crm.lifecycle-lead-status", "crm", { conflicts: ["customer|NEW"] }),

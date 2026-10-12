@@ -1,0 +1,22 @@
+version: 1
+auditor: brand
+checks:
+  - id: brand.published-pages
+    title: Published landing pages
+    severity: high
+  - id: brand.page-meta
+    title: Landing page titles and descriptions
+    severity: medium
+  - id: brand.page-tracking
+    title: Tracking on landing pages
+    severity: high
+  - id: brand.page-cta
+    title: Landing page call to action
+    severity: high
+    params:
+      patterns: ["hs-cta", "hs-form", "hs-button"]
+  - id: brand.markers
+    title: Brand markers on landing pages
+    severity: medium
+    params:
+      markers: []

@@ -6,6 +6,8 @@ Read-only audit of a HubSpot portal. You get a scored report of what works, what
 
 The server speaks MCP over stdio. A CLI runs the same audit. It never sends POST, PUT, PATCH, or DELETE to HubSpot.
 
+What's new in v1.1.0: landing page and brand checks, buyer-journey email hooks, and list, score, subscription, and campaign checks. A failed ticket-pipeline read no longer hides the deal pipeline. See [CHANGELOG.md](CHANGELOG.md).
+
 ## Who is this for?
 
 **RevOps lead cleaning a portal before a process change.** You need one pass over duplicates, pipelines, and forms.
@@ -52,12 +54,17 @@ Rules live in versioned YAML under `rules/`. Each file has `version: 1` and a li
 | Email | Workflow health, nurture sequence, unengaged contacts, SPF, DKIM, and DMARC |
 | Integrations | Connected apps, webhook subscriptions, sync errors |
 | Reporting | Dashboards, attribution reports, lifecycle funnel |
+| Brand | Published landing pages, title and meta description, tracking script, call to action, optional brand markers |
+| Journey | A published email or active workflow for each buyer stage you list |
+| Program | Dynamic lists, lead score, email subscription types, campaign links |
 
 A check returns `working`, `broken`, or `missing`. Evidence is counts and property names. The report does not print contact records.
 
 The score is the percentage of checks that are working. The 30-day plan is critical and high broken items. The 60-day plan is medium broken items plus critical and high missing items. The 90-day plan is what remains.
 
-Live mode reads HubSpot with GET requests and a private app token. If a call is forbidden or the payload has no field for that check, the finding is `missing`. Demo mode loads `demo/portal.json`, a fictional company called Harbour Glass Co.
+Live mode reads HubSpot with GET requests and a private app token. If a call is forbidden or the payload has no field for that check, the finding is `missing`. A failed ticket-pipeline read does not hide the deal pipeline. Fill rates count only contact properties that were requested. Demo mode loads `demo/portal.json`, a fictional company called Harbour Glass Co.
+
+`brand.markers` stays missing until you add your own phrases, colour tokens, or asset names under `params.markers` in `rules/brand.yaml`. The buyer-stage patterns live in `rules/journey.yaml`. Pass `--site` only for the public site you want judged. The audit does not pick a company domain for you. Landing page checks use the CMS page URL.
 
 ## MCP tools
 
@@ -72,7 +79,7 @@ You: "Run the Harbour Glass demo and tell me the score."
 
 The server calls `run_audit` with `demo: true`.
 
-You get a score of 13, with 4 working, 16 broken, and 10 missing. The first 30-day items are sender authentication, GDPR consent, and the missing tracking script.
+You get a score of 15, with 6 working, 20 broken, and 14 missing. The first 30-day items are sender authentication, GDPR consent, and the missing tracking script.
 
 ## Setup
 
@@ -141,20 +148,20 @@ Use the official server when you want an agent to work in the CRM. Use this serv
 
 The full fictional report is [examples/example-report.md](examples/example-report.md). The JSON form is [examples/example-report.json](examples/example-report.json).
 
-Harbour Glass Co scores **13**. Four checks are working, 16 are broken, and 10 are missing.
+Harbour Glass Co scores **15**. Six checks are working, 20 are broken, and 14 are missing.
 
 ```markdown
 # HubSpot audit: Harbour Glass Co
 
 This report uses a fictional sample portal. It is not a customer account.
 
-Score: **13** (share of checks that are working).
+Score: **15** (share of checks that are working).
 
 | Status | Count |
 | --- | ---: |
-| Working | 4 |
-| Broken | 16 |
-| Missing | 10 |
+| Working | 6 |
+| Broken | 20 |
+| Missing | 14 |
 ```
 
 The broken list starts with sender authentication, GDPR consent on forms, and the tracking code. The 30-day plan takes the critical and high broken items. The 60-day and 90-day plans follow in the same file.

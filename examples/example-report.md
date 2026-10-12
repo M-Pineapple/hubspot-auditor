@@ -2,13 +2,13 @@
 
 This report uses a fictional sample portal. It is not a customer account.
 
-Score: **13** (share of checks that are working).
+Score: **15** (share of checks that are working).
 
 | Status | Count |
 | --- | ---: |
-| Working | 4 |
-| Broken | 16 |
-| Missing | 10 |
+| Working | 6 |
+| Broken | 20 |
+| Missing | 14 |
 
 ## Broken
 
@@ -32,6 +32,13 @@ Score: **13** (share of checks that are working).
 - Check: `tracking.install-code`
 - Evidence: The public page HTML does not include the HubSpot tracking script.
 - Fix: Add the portal tracking code to the site layout.
+
+### Tracking on landing pages
+
+- Severity: high
+- Check: `brand.page-tracking`
+- Evidence: 1 published landing page(s) have no tracking script.
+- Fix: Add the portal tracking code to the landing page template.
 
 ### Duplicate companies
 
@@ -82,6 +89,13 @@ Score: **13** (share of checks that are working).
 - Evidence: 1 app(s) and 1 webhook(s) report sync errors.
 - Fix: Open the failing sync and replay or pause it.
 
+### Email hooks by buyer stage
+
+- Severity: high
+- Check: `journey.stage-hooks`
+- Evidence: 6 journey stage(s) have no matching published email: lead, marketingqualifiedlead, salesqualifiedlead, opportunity, customer, evangelist.
+- Fix: Add one email or workflow for each uncovered stage.
+
 ### Stale deals
 
 - Severity: high
@@ -102,6 +116,13 @@ Score: **13** (share of checks that are working).
 - Check: `tracking.original-source`
 - Evidence: Original source is missing on too many sampled contacts.
 - Fix: Stop blank imports from clearing original source.
+
+### Landing page titles and descriptions
+
+- Severity: medium
+- Check: `brand.page-meta`
+- Evidence: 1 published landing page(s) are missing a title or meta description.
+- Fix: Fill the HTML title and meta description before the next campaign.
 
 ### Lifecycle and lead status
 
@@ -124,7 +145,21 @@ Score: **13** (share of checks that are working).
 - Evidence: 1 later deal stage(s) are below 40% probability.
 - Fix: Set a realistic probability on each open stage.
 
+### Campaign links on live assets
+
+- Severity: medium
+- Check: `program.campaigns`
+- Evidence: 2 published page or email asset(s) have no campaign.
+- Fix: Attach each live asset to a campaign.
+
 ## Missing
+
+### Email subscription types
+
+- Severity: high
+- Check: `program.subscription-types`
+- Evidence: No email subscription type was returned.
+- Fix: Create subscription types before the next marketing send.
 
 ### Lifecycle funnel
 
@@ -132,6 +167,13 @@ Score: **13** (share of checks that are working).
 - Check: `reporting.lifecycle-funnel`
 - Evidence: No lifecycle funnel report was returned.
 - Fix: Build a funnel from subscriber to customer.
+
+### Brand markers on landing pages
+
+- Severity: medium
+- Check: `brand.markers`
+- Evidence: No brand markers are configured.
+- Fix: Add phrases, colour tokens, or asset names under params.markers.
 
 ### Nurture sequence
 
@@ -158,7 +200,7 @@ Score: **13** (share of checks that are working).
 
 - Severity: medium
 - Check: `pipelines.required-fields`
-- Evidence: 2 pipeline(s) have a stage that does not require the configured fields.
+- Evidence: 1 pipeline(s) have a stage that does not require the configured fields.
 - Fix: Mark those properties required before a record can enter the stage.
 
 ### Automation on stage change
@@ -167,6 +209,20 @@ Score: **13** (share of checks that are working).
 - Check: `pipelines.stage-automation`
 - Evidence: 1 pipeline(s) have no stage-change automation.
 - Fix: Add a workflow or stage action for the first handoff stage.
+
+### Dynamic lists
+
+- Severity: medium
+- Check: `program.dynamic-lists`
+- Evidence: No dynamic list was returned.
+- Fix: Build dynamic lists for the stages you email.
+
+### Lead score
+
+- Severity: medium
+- Check: `program.lead-score`
+- Evidence: No lead-score property was returned.
+- Fix: Turn on predictive lead scoring or name your score property in the YAML.
 
 ### Attribution reports
 
@@ -197,6 +253,20 @@ Score: **13** (share of checks that are working).
 - Fix: Embed the form or archive it.
 
 ## Working
+
+### Landing page call to action
+
+- Severity: high
+- Check: `brand.page-cta`
+- Evidence: Published landing pages include a call to action.
+- Fix: Point the action at one form or one meeting link.
+
+### Published landing pages
+
+- Severity: high
+- Check: `brand.published-pages`
+- Evidence: 1 landing page(s) are published.
+- Fix: Keep a draft only while it is still being edited.
 
 ### Live forms
 
@@ -233,6 +303,7 @@ Score: **13** (share of checks that are working).
 - critical: Sender domain authentication. Publish the missing DNS records before the next campaign.
 - critical: GDPR consent on forms. Add a consent checkbox and store the lawful basis.
 - critical: Tracking code on the public site. Add the portal tracking code to the site layout.
+- high: Tracking on landing pages. Add the portal tracking code to the landing page template.
 - high: Duplicate companies. Merge companies that share a domain.
 - high: Duplicate contacts. Merge the duplicate contacts and turn on a create-time duplicate rule.
 - high: Required properties filled. Make the thin properties required on the create forms and backfill the blanks.
@@ -240,24 +311,31 @@ Score: **13** (share of checks that are working).
 - high: Form field mapping. Map each field to a contact or company property.
 - high: Spam protection. Turn on CAPTCHA or another spam control.
 - high: Sync errors. Open the failing sync and replay or pause it.
+- high: Email hooks by buyer stage. Add one email or workflow for each uncovered stage.
 - high: Stale deals. Create a workflow that tasks the owner when a deal goes stale.
 - high: Cookie banner. Add a consent banner before non-essential HubSpot cookies load.
 - high: Original source attribution. Stop blank imports from clearing original source.
 
 ### 60 days
 
+- medium: Landing page titles and descriptions. Fill the HTML title and meta description before the next campaign.
 - medium: Lifecycle and lead status. Clear the conflicting lead status when lifecycle stage changes.
 - medium: Webhook subscriptions. Repair or remove the inactive subscription.
 - medium: Deal stage probabilities. Set a realistic probability on each open stage.
+- medium: Campaign links on live assets. Attach each live asset to a campaign.
+- high: Email subscription types. Create subscription types before the next marketing send.
 - high: Lifecycle funnel. Build a funnel from subscriber to customer.
 
 ### 90 days
 
+- medium: Brand markers on landing pages. Add phrases, colour tokens, or asset names under params.markers.
 - medium: Nurture sequence. Add one short nurture for new leads.
 - medium: Unengaged contacts. Add a sunset workflow after a set number of unopened emails.
 - medium: Follow-up email. Add a follow-up email or a workflow enrolment on submit.
 - medium: Required fields per stage. Mark those properties required before a record can enter the stage.
 - medium: Automation on stage change. Add a workflow or stage action for the first handoff stage.
+- medium: Dynamic lists. Build dynamic lists for the stages you email.
+- medium: Lead score. Turn on predictive lead scoring or name your score property in the YAML.
 - medium: Attribution reports. Add an attribution report for paid and organic channels.
 - medium: UTM capture. Pass UTM parameters into hidden form fields.
 - low: Unused custom properties. Archive unused properties or start collecting them on a form.

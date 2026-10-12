@@ -90,13 +90,15 @@ export const checks: Record<string, CheckFn> = {
     const blocked = gap(snapshot, "properties");
     if (blocked) return finding(rule, "missing", blocked, "Grant the read scope for properties and run the audit again.");
     const required = new Set(strList(rule.params, "names"));
-    const thin = snapshot.properties.filter((property) => {
+    const judged = snapshot.properties.filter((property) => {
       if (required.size > 0 && !required.has(property.name)) return false;
       if (required.size === 0 && !property.required) return false;
-      if (property.totalCount === 0) return false;
-      const ratio = property.filledCount / property.totalCount;
-      return ratio < num(rule.params, "minFillRatio", 0.9);
+      return property.filledCount !== null && property.totalCount > 0;
     });
+    if (judged.length === 0) {
+      return finding(rule, "missing", "Required properties were not in the contact sample.", "Request those properties on the contact read and run the audit again.");
+    }
+    const thin = judged.filter((property) => (property.filledCount ?? 0) / property.totalCount < num(rule.params, "minFillRatio", 0.9));
     if (thin.length === 0) {
       return finding(rule, "working", "Required properties are filled on at least 90% of records.", "Keep required fields on create forms.");
     }
@@ -112,7 +114,7 @@ export const checks: Record<string, CheckFn> = {
     const blocked = gap(snapshot, "properties");
     if (blocked) return finding(rule, "missing", blocked, "Grant the read scope for properties and run the audit again.");
     const unused = snapshot.properties.filter(
-      (property) => property.custom && property.filledCount <= num(rule.params, "maxFilled", 0),
+      (property) => property.custom && property.filledCount !== null && property.filledCount <= num(rule.params, "maxFilled", 0),
     );
     if (unused.length === 0) {
       return finding(rule, "working", "Every custom property in the sample has at least one value.", "Review new properties after 30 days.");
@@ -146,9 +148,13 @@ export const checks: Record<string, CheckFn> = {
   },
 
   "pipelines.stage-probabilities": ({ snapshot, rule }) => {
-    const blocked = gap(snapshot, "pipelines");
-    if (blocked) return finding(rule, "missing", blocked, "Grant the read scope for pipelines and run the audit again.");
+    const blocked = gap(snapshot, "pipelines-deals");
+    if (blocked) return finding(rule, "missing", blocked, "Grant the read scope for deal pipelines and run the audit again.");
     const floor = num(rule.params, "lateStageMinProbability", 40);
+    const dealPipelines = snapshot.pipelines.filter((item) => item.objectType === "deals");
+    if (dealPipelines.length === 0) {
+      return finding(rule, "missing", "No deal pipeline was returned.", "Create a deal pipeline before judging stage probabilities.");
+    }
     const weak: string[] = [];
     for (const pipeline of snapshot.pipelines.filter((item) => item.objectType === "deals")) {
       pipeline.stages.forEach((stage, index) => {
@@ -187,11 +193,11 @@ export const checks: Record<string, CheckFn> = {
   },
 
   "pipelines.required-fields": ({ snapshot, rule }) => {
-    const blocked = gap(snapshot, "pipelines");
-    if (blocked) return finding(rule, "missing", blocked, "Grant the read scope for pipelines and run the audit again.");
+    const blocked = gap(snapshot, "pipelines-deals");
+    if (blocked) return finding(rule, "missing", blocked, "Grant the read scope for deal pipelines and run the audit again.");
     const expected = strList(rule.params, "properties");
     const bare = snapshot.pipelines.filter((pipeline) =>
-      pipeline.stages.some((stage) => expected.some((name) => !stage.requiredProperties.includes(name))),
+      pipeline.objectType === "deals" && pipeline.stages.some((stage) => expected.some((name) => !stage.requiredProperties.includes(name))),
     );
     if (bare.length === 0) {
       return finding(rule, "working", "Every stage requires the configured fields.", "Keep the required list in this YAML file.");
@@ -205,9 +211,16 @@ export const checks: Record<string, CheckFn> = {
   },
 
   "pipelines.stage-automation": ({ snapshot, rule }) => {
-    const blocked = gap(snapshot, "stage-automation") ?? gap(snapshot, "pipelines");
-    if (blocked) return finding(rule, "missing", blocked, "Grant the read scope for pipelines and run the audit again.");
-    const quiet = snapshot.pipelines.filter((pipeline) => pipeline.automatedStageIds.length === 0);
+    const blocked = gap(snapshot, "pipelines-deals");
+    if (blocked) return finding(rule, "missing", blocked, "Grant the read scope for deal pipelines and run the audit again.");
+    const deals = snapshot.pipelines.filter((pipeline) => pipeline.objectType === "deals");
+    if (deals.length === 0) {
+      return finding(rule, "missing", "No deal pipeline was returned.", "Create a deal pipeline before judging stage automation.");
+    }
+    if (deals.some((pipeline) => pipeline.automationKnown === false)) {
+      return finding(rule, "missing", "Stage-change actions were not in the pipeline read.", "Read workflow enrolment before judging stage automation.");
+    }
+    const quiet = deals.filter((pipeline) => pipeline.automatedStageIds.length === 0);
     if (quiet.length === 0) {
       return finding(rule, "working", "Every pipeline has at least one stage automation.", "Review the automation when stages change.");
     }
@@ -220,8 +233,8 @@ export const checks: Record<string, CheckFn> = {
   },
 
   "pipelines.ticket-pipeline": ({ snapshot, rule }) => {
-    const blocked = gap(snapshot, "pipelines");
-    if (blocked) return finding(rule, "missing", blocked, "Grant the read scope for pipelines and run the audit again.");
+    const blocked = gap(snapshot, "pipelines-tickets");
+    if (blocked) return finding(rule, "missing", blocked, "Grant the read scope for ticket pipelines and run the audit again.");
     const tickets = snapshot.pipelines.filter((pipeline) => pipeline.objectType === "tickets");
     if (tickets.length > 0) {
       return finding(rule, "working", `${tickets.length} ticket pipeline(s) are defined.`, "Keep a closed stage and a required resolution field.");
@@ -548,6 +561,173 @@ export const checks: Record<string, CheckFn> = {
       return finding(rule, "working", `${reports.length} lifecycle funnel report(s) are present.`, "Use the same stage names as the CRM properties.");
     }
     return finding(rule, "missing", "No lifecycle funnel report was returned.", "Build a funnel from subscriber to customer.");
+  },
+
+  "brand.published-pages": ({ snapshot, rule }) => {
+    const blocked = gap(snapshot, "landing-pages");
+    if (blocked) return finding(rule, "missing", blocked, "Grant the CMS read scope and run the audit again.");
+    const published = snapshot.landingPages.filter((page) => page.published);
+    if (published.length > 0) {
+      return finding(rule, "working", `${published.length} landing page(s) are published.`, "Keep a draft only while it is still being edited.");
+    }
+    return finding(rule, "missing", "No published landing page was returned.", "Publish the page for the primary campaign.");
+  },
+
+  "brand.page-meta": ({ snapshot, rule }) => {
+    const blocked = gap(snapshot, "landing-pages");
+    if (blocked) return finding(rule, "missing", blocked, "Grant the CMS read scope and run the audit again.");
+    const published = snapshot.landingPages.filter((page) => page.published);
+    if (published.length === 0) {
+      return finding(rule, "missing", "No published landing page was available for meta checks.", "Publish a page before judging titles and descriptions.");
+    }
+    const thin = published.filter((page) => !page.metaTitle?.trim() || !page.metaDescription?.trim());
+    if (thin.length === 0) {
+      return finding(rule, "working", "Published landing pages have a title and a meta description.", "Keep the description specific to the offer.");
+    }
+    return finding(rule, "broken", `${thin.length} published landing page(s) are missing a title or meta description.`, "Fill the HTML title and meta description before the next campaign.");
+  },
+
+  "brand.page-tracking": ({ snapshot, rule }) => {
+    const blocked = gap(snapshot, "landing-pages");
+    if (blocked) return finding(rule, "missing", blocked, "Grant the CMS read scope and run the audit again.");
+    const published = snapshot.landingPages.filter((page) => page.published);
+    const withHtml = published.filter((page) => page.html !== null);
+    if (withHtml.length === 0) {
+      return finding(rule, "missing", "Published landing page HTML was not fetched.", "Fetch each published page URL and run the audit again.");
+    }
+    const bare = withHtml.filter((page) => !page.html?.includes("js.hs-scripts.com") && !page.html?.includes("hs-script-loader"));
+    if (bare.length === 0) {
+      return finding(rule, "working", "Published landing pages include the tracking script.", "Keep the script in the page template.");
+    }
+    return finding(rule, "broken", `${bare.length} published landing page(s) have no tracking script.`, "Add the portal tracking code to the landing page template.");
+  },
+
+  "brand.page-cta": ({ snapshot, rule }) => {
+    const blocked = gap(snapshot, "landing-pages");
+    if (blocked) return finding(rule, "missing", blocked, "Grant the CMS read scope and run the audit again.");
+    const patterns = strList(rule.params, "patterns");
+    const needles = patterns.length > 0 ? patterns : ["hs-cta", "hs-form"];
+    const published = snapshot.landingPages.filter((page) => page.published);
+    const withHtml = published.filter((page) => page.html !== null);
+    if (withHtml.length === 0) {
+      return finding(rule, "missing", "Published landing page HTML was not fetched.", "Fetch each published page URL before judging calls to action.");
+    }
+    const quiet = withHtml.filter((page) => !needles.some((needle) => page.html?.includes(needle)));
+    if (quiet.length === 0) {
+      return finding(rule, "working", "Published landing pages include a call to action.", "Point the action at one form or one meeting link.");
+    }
+    return finding(rule, "broken", `${quiet.length} published landing page(s) have no call to action.`, "Add a form, a button, or a HubSpot CTA.");
+  },
+
+  "brand.markers": ({ snapshot, rule }) => {
+    const markers = strList(rule.params, "markers");
+    if (markers.length === 0) {
+      return finding(rule, "missing", "No brand markers are configured.", "Add phrases, colour tokens, or asset names under params.markers.");
+    }
+    const blocked = gap(snapshot, "landing-pages");
+    if (blocked) return finding(rule, "missing", blocked, "Grant the CMS read scope and run the audit again.");
+    const published = snapshot.landingPages.filter((page) => page.published);
+    const withHtml = published.filter((page) => page.html !== null);
+    if (withHtml.length === 0) {
+      return finding(rule, "missing", "Published landing page HTML was not fetched.", "Fetch the page HTML before comparing it with the brand markers.");
+    }
+    const drift = withHtml.filter((page) => markers.some((marker) => !page.html?.includes(marker)));
+    if (drift.length === 0) {
+      return finding(rule, "working", "Published landing pages include the configured brand markers.", "Update the marker list when the brand system changes.");
+    }
+    return finding(rule, "broken", `${drift.length} published landing page(s) are missing a configured brand marker.`, "Apply the shared template instead of a one-off page style.");
+  },
+
+  "journey.stage-hooks": ({ snapshot, rule }) => {
+    const blocked = gap(snapshot, "emails");
+    if (blocked) return finding(rule, "missing", blocked, "Grant the marketing email read scope and run the audit again.");
+    const stages = Array.isArray(rule.params.stages) ? rule.params.stages : [];
+    const parsed = stages.flatMap((stage) => {
+      if (!stage || typeof stage !== "object") return [];
+      const record = stage as { stage?: string; patterns?: string[] };
+      const name = String(record.stage ?? "");
+      const patterns = Array.isArray(record.patterns) ? record.patterns.map(String) : [];
+      return name ? [{ name, patterns }] : [];
+    });
+    if (parsed.length === 0) {
+      return finding(rule, "missing", "No buyer-journey stages are configured.", "List lifecycle stages and email name patterns in the YAML.");
+    }
+    const published = snapshot.emails.filter((email) => email.published);
+    const uncovered = parsed.filter((stage) => {
+      const corpus = [
+        ...published.map((email) => `${email.name} ${email.subject ?? ""}`),
+        ...snapshot.workflows.filter((workflow) => workflow.enabled).map((workflow) => workflow.name),
+      ].join("\n").toLowerCase();
+      return !stage.patterns.some((pattern) => corpus.includes(pattern.toLowerCase()));
+    });
+    if (uncovered.length === 0) {
+      return finding(rule, "working", "Each configured journey stage has a published email or an active workflow.", "Suppress later-stage mail when a contact moves backward.");
+    }
+    return finding(
+      rule,
+      "broken",
+      `${uncovered.length} journey stage(s) have no matching published email: ${uncovered.map((stage) => stage.name).join(", ")}.`,
+      "Add one email or workflow for each uncovered stage.",
+    );
+  },
+
+  "program.dynamic-lists": ({ snapshot, rule }) => {
+    const blocked = gap(snapshot, "lists");
+    if (blocked) return finding(rule, "missing", blocked, "Grant the lists read scope and run the audit again.");
+    const dynamic = snapshot.lists.filter((list) => list.dynamic);
+    if (dynamic.length > 0) {
+      return finding(rule, "working", `${dynamic.length} active list(s) are dynamic.`, "Use a dynamic list for each lifecycle stage you mail.");
+    }
+    return finding(rule, "missing", "No dynamic list was returned.", "Build dynamic lists for the stages you email.");
+  },
+
+  "program.lead-score": ({ snapshot, rule }) => {
+    const blocked = gap(snapshot, "properties");
+    if (blocked) return finding(rule, "missing", blocked, "Grant the read scope for properties and run the audit again.");
+    const names = strList(rule.params, "names");
+    const wanted = names.length > 0 ? names : ["hs_predictivecontactscore"];
+    const found = snapshot.properties.filter((property) => wanted.includes(property.name));
+    if (found.length === 0) {
+      return finding(rule, "missing", "No lead-score property was returned.", "Turn on predictive lead scoring or name your score property in the YAML.");
+    }
+    const sampled = found.filter((property) => property.filledCount !== null && property.totalCount > 0);
+    if (sampled.length === 0) {
+      return finding(rule, "missing", "The lead-score property was not in the contact sample.", "Request the score property on the contact read.");
+    }
+    const empty = sampled.filter((property) => (property.filledCount ?? 0) === 0);
+    if (empty.length > 0) {
+      return finding(rule, "broken", "A lead-score property exists but the sample has no values.", "Check that scoring is calculating, then sample again.");
+    }
+    return finding(rule, "working", "A lead-score property has values in the sample.", "Review the score fit before using it as an enrolment rule.");
+  },
+
+  "program.subscription-types": ({ snapshot, rule }) => {
+    const blocked = gap(snapshot, "subscriptions");
+    if (blocked) return finding(rule, "missing", blocked, "Grant the communication-preferences read scope and run the audit again.");
+    if (snapshot.subscriptionTypes.length > 0) {
+      return finding(rule, "working", `${snapshot.subscriptionTypes.length} subscription type(s) are defined.`, "Map each marketing email to one subscription type.");
+    }
+    return finding(rule, "missing", "No email subscription type was returned.", "Create subscription types before the next marketing send.");
+  },
+
+  "program.campaigns": ({ snapshot, rule }) => {
+    const pagesBlocked = gap(snapshot, "landing-pages");
+    const emailsBlocked = gap(snapshot, "emails");
+    if (pagesBlocked && emailsBlocked) {
+      return finding(rule, "missing", pagesBlocked, "Read landing pages or marketing emails before judging campaigns.");
+    }
+    const assets = [
+      ...snapshot.landingPages.filter((page) => page.published),
+      ...snapshot.emails.filter((email) => email.published),
+    ];
+    if (assets.length === 0) {
+      return finding(rule, "missing", "No published page or email was available.", "Publish an asset before judging campaign links.");
+    }
+    const bare = assets.filter((asset) => !asset.hasCampaign).length;
+    if (bare === 0) {
+      return finding(rule, "working", "Published pages and emails are linked to a campaign.", "Keep one campaign per offer.");
+    }
+    return finding(rule, "broken", `${bare} published page or email asset(s) have no campaign.`, "Attach each live asset to a campaign.");
   },
 };
 
