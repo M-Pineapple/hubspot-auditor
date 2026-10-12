@@ -1,7 +1,7 @@
 import type { FetchGap, FormDef, LandingPage, MarketingEmail, PortalSnapshot, Workflow } from "../types.ts";
 import { loadRules } from "../rules.ts";
 import { HubSpotReadClient } from "./client.ts";
-import { resilientFetch } from "./net.ts";
+import { classifyMailAuth, lookupTxt, resilientFetch } from "./net.ts";
 
 interface Page<T> {
   results?: T[];
@@ -53,6 +53,9 @@ interface RawEmail {
   isPublished?: boolean;
   campaign?: string;
   campaignName?: string;
+  primaryEmailCampaignId?: string | null;
+  allEmailCampaignIds?: string[];
+  subscriptionDetails?: { subscriptionId?: string | null };
 }
 
 interface RawList {
@@ -60,6 +63,7 @@ interface RawList {
   id?: string;
   name?: string;
   processingType?: string;
+  dynamic?: boolean;
 }
 
 interface RawForm {
@@ -67,8 +71,19 @@ interface RawForm {
   name: string;
   archived?: boolean;
   fieldGroups?: { fields?: { name?: string }[] }[];
-  configuration?: { recaptchaEnabled?: boolean };
+  configuration?: {
+    recaptchaEnabled?: boolean;
+    postSubmitAction?: { type?: string } | string;
+  };
   legalConsentOptions?: unknown;
+}
+
+interface RawDomain {
+  domain?: string;
+  isPrimarySitePage?: boolean;
+  isPrimaryLandingPage?: boolean;
+  isPrimaryEmail?: boolean;
+  isUsedForEmail?: boolean;
 }
 
 function sampledContactProperties(): string[] {
@@ -172,7 +187,15 @@ function mapForm(form: RawForm, html: string | null): FormDef {
     gdprConsent: form.legalConsentOptions == null ? false : true,
     followUpEmail: null,
     spamProtection: form.configuration?.recaptchaEnabled ?? null,
+    followUpEmail: followUpFrom(form),
   };
+}
+
+function followUpFrom(form: RawForm): boolean | null {
+  if (!form.configuration) return null;
+  const action = form.configuration.postSubmitAction;
+  const type = typeof action === "string" ? action : action?.type ?? "";
+  return /email|follow/i.test(type);
 }
 
 export async function loadPortal(
@@ -223,18 +246,34 @@ export async function loadPortal(
     const index = gaps.findIndex((gap) => gap.area === "landing-pages");
     if (index >= 0) gaps.splice(index, 1);
   }
-  const emailList = await tryGet<{ results?: RawEmail[] }>(client, "/marketing/v3/emails", "emails", gaps);
-  const listPage = await tryGet<{ lists?: RawList[]; results?: RawList[] }>(client, "/crm/v3/lists", "lists", gaps);
-  const subscriptionPage = await tryGet<{ results?: { id: string; name: string }[] }>(
+  const emailList = await tryGet<{ results?: RawEmail[] }>(client, "/marketing/v3/emails?limit=100", "emails", gaps);
+  const legacyLists = await tryGet<{ lists?: RawList[] }>(client, "/contacts/v1/lists?count=100", "lists", gaps);
+  const subscriptionPage = await tryGet<{ subscriptionDefinitions?: { id: string; name: string }[]; results?: { id: string; name: string }[] }>(
     client,
     "/communication-preferences/v3/definitions",
     "subscriptions",
     gaps,
   );
-  await noteUnmapped(client, "/marketing/v3/domains", "senders", gaps);
+  const domainPage = await tryGet<{ results?: RawDomain[] }>(client, "/cms/v3/domains", "senders", gaps);
+  const ownerPage = await tryGet<{ results?: { id: string }[] }>(client, "/crm/v3/owners?limit=100", "owners", gaps);
   await noteUnmapped(client, "/integrations/v1/me", "integrations", gaps);
   await noteUnmapped(client, "/webhooks/v3/subscriptions", "webhooks", gaps);
   await noteUnmapped(client, "/analytics/v2/reports", "reports", gaps);
+  let siteUrl = publicSiteUrl;
+  const primary = (domainPage?.results ?? []).find((item) => item.isPrimarySitePage || item.isPrimaryLandingPage);
+  if (!siteUrl && primary?.domain) siteUrl = `https://${primary.domain}`;
+  const senderDomains = [];
+  for (const item of domainPage?.results ?? []) {
+    if (!item.domain || (!item.isUsedForEmail && !item.isPrimaryEmail)) continue;
+    const names = [item.domain, `_dmarc.${item.domain}`, `hs1._domainkey.${item.domain}`, `hs2._domainkey.${item.domain}`];
+    const records = [];
+    for (const name of names) {
+      const values = await lookupTxt(name).catch(() => []);
+      for (const value of values) records.push({ name, value });
+    }
+    const auth = classifyMailAuth(records, item.domain);
+    senderDomains.push({ domain: item.domain, ...auth });
+  }
 
   const contactRows = contacts ?? [];
   const contactProps = properties?.results ?? [];
@@ -260,7 +299,7 @@ export async function loadPortal(
       metaTitle: page.htmlTitle ?? null,
       metaDescription: page.metaDescription ?? null,
       html,
-      hasCampaign: Boolean(page.campaign || page.campaignName),
+      hasCampaign: null,
     });
   }
   const emails: MarketingEmail[] = (emailList?.results ?? []).map((email) => ({
@@ -268,16 +307,17 @@ export async function loadPortal(
     name: email.name ?? email.id,
     subject: email.subject ?? email.subjectLine ?? null,
     published: emailPublished(email),
-    hasCampaign: Boolean(email.campaign || email.campaignName),
+    hasCampaign: Boolean(email.primaryEmailCampaignId || email.campaign || email.campaignName || email.allEmailCampaignIds?.length),
+    hasSubscription: Boolean(email.subscriptionDetails?.subscriptionId),
   }));
-  const listRows = listPage?.results ?? listPage?.lists ?? [];
+  const listRows = legacyLists?.lists ?? [];
 
   let html: string | null = null;
   let fetchError: string | null = null;
-  if (publicSiteUrl) {
+  if (siteUrl) {
     try {
-      assertPublicFetch(publicSiteUrl);
-      const response = await fetchImpl(publicSiteUrl, { method: "GET" });
+      assertPublicFetch(siteUrl);
+      const response = await fetchImpl(siteUrl, { method: "GET" });
       html = await response.text();
     } catch (error) {
       fetchError = `Could not fetch the public site: ${(error as Error).message}`;
@@ -296,6 +336,7 @@ export async function loadPortal(
     })),
     automatedStageIds: [] as string[],
     automationKnown: false,
+    requirementsKnown: false,
   });
 
   const workflows: Workflow[] = (flows?.results ?? []).map((flow) => ({
@@ -341,7 +382,7 @@ export async function loadPortal(
     })),
     forms: forms.map((form) => mapForm(form, [html, ...landingPages.map((page) => page.html)].filter(Boolean).join("\n") || null)),
     tracking: {
-      publicSiteUrl: publicSiteUrl ?? null,
+      publicSiteUrl: siteUrl ?? null,
       html,
       fetchError,
       cookieBanner: html ? /cookie|consent|onetrust|cookiebot/i.test(html) : false,
@@ -352,7 +393,7 @@ export async function loadPortal(
       contactCount: contactRows.length,
     },
     workflows,
-    senderDomains: [],
+    senderDomains,
     integrations: [],
     webhooks: [],
     reports: [],
@@ -361,9 +402,13 @@ export async function loadPortal(
     lists: listRows.map((list) => ({
       id: String(list.listId ?? list.id ?? ""),
       name: list.name ?? "",
-      dynamic: String(list.processingType ?? "").toUpperCase() === "DYNAMIC",
+      dynamic: list.dynamic === true || String(list.processingType ?? "").toUpperCase() === "DYNAMIC",
     })),
-    subscriptionTypes: (subscriptionPage?.results ?? []).map((item) => ({ id: String(item.id), name: item.name })),
+    subscriptionTypes: (subscriptionPage?.subscriptionDefinitions ?? subscriptionPage?.results ?? []).map((item) => ({
+      id: String(item.id),
+      name: item.name,
+    })),
+    owners: (ownerPage?.results ?? []).map((owner) => ({ id: String(owner.id) })),
     fetchGaps: gaps,
   };
 }

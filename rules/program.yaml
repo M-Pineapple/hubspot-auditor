@@ -15,3 +15,6 @@ checks:
   - id: program.campaigns
     title: Campaign links on live assets
     severity: medium
+  - id: program.owners
+    title: Record owners
+    severity: medium

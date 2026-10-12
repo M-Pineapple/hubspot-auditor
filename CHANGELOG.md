@@ -5,6 +5,17 @@ All notable changes to HubSpot Auditor are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2026-10-12
+
+### Added
+
+- Brand checks for a logo, a favicon, a level-one heading, and the colour palette. Extra phrases stay optional.
+- Sender authentication is read from SPF, DKIM, and DMARC records for the portal's email domains.
+- Published emails are checked for a subscription type. Record owners are checked.
+- The lifecycle funnel is read from contact stages when HubSpot does not return a report object.
+- Lists, subscription types, email campaign links, and form follow-up actions are read from the fields HubSpot actually returns.
+- When no public site URL is passed, tracking uses the portal's primary site domain.
+
 ## [1.2.0] - 2026-10-12
 
 ### Added

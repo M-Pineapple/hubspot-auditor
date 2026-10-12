@@ -33,6 +33,7 @@ export function snapshot(partial: Partial<PortalSnapshot> = {}): PortalSnapshot 
     emails: [],
     lists: [],
     subscriptionTypes: [],
+    owners: [],
     fetchGaps: [],
     ...partial,
   };

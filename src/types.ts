@@ -56,6 +56,7 @@ export interface Pipeline {
   stages: Stage[];
   automatedStageIds: string[];
   automationKnown?: boolean;
+  requirementsKnown?: boolean;
 }
 
 export interface Deal {
@@ -130,7 +131,7 @@ export interface LandingPage {
   metaTitle: string | null;
   metaDescription: string | null;
   html: string | null;
-  hasCampaign: boolean;
+  hasCampaign: boolean | null;
 }
 
 export interface MarketingEmail {
@@ -138,7 +139,12 @@ export interface MarketingEmail {
   name: string;
   subject: string | null;
   published: boolean;
-  hasCampaign: boolean;
+  hasCampaign: boolean | null;
+  hasSubscription: boolean;
+}
+
+export interface OwnerRecord {
+  id: string;
 }
 
 export interface ContactList {
@@ -177,5 +183,6 @@ export interface PortalSnapshot {
   emails: MarketingEmail[];
   lists: ContactList[];
   subscriptionTypes: SubscriptionType[];
+  owners: OwnerRecord[];
   fetchGaps: FetchGap[];
 }

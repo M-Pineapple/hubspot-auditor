@@ -13,3 +13,6 @@ checks:
   - id: email.sender-authentication
     title: Sender domain authentication
     severity: critical
+  - id: email.subscription-coverage
+    title: Subscription type on published emails
+    severity: high

@@ -82,16 +82,17 @@
       "published": true,
       "metaTitle": "Tour the studio",
       "metaDescription": null,
-      "html": "<html><a class=\"hs-button\" href=\"/book\">Book</a></html>",
+      "html": "<html><h1>Tour</h1><img src=\"/logo.svg\" alt=\"logo\"><a class=\"hs-button\" href=\"/book\">Book</a><style>a{color:#0f766e}</style></html>",
       "hasCampaign": false
     }
   ],
   "emails": [
-    {"id": "e1", "name": "Welcome note", "subject": "Welcome to the list", "published": true, "hasCampaign": false}
+    {"id": "e1", "name": "Welcome note", "subject": "Welcome to the list", "published": true, "hasCampaign": false, "hasSubscription": true}
   ],
   "lists": [
     {"id": "l1", "name": "All contacts", "dynamic": false}
   ],
-  "subscriptionTypes": [],
+  "subscriptionTypes": [{"id": "s1", "name": "Studio news"}],
+  "owners": [{"id": "o1"}],
   "fetchGaps": []
 }

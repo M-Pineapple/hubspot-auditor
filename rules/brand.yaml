@@ -15,8 +15,22 @@ checks:
     severity: high
     params:
       patterns: ["hs-cta", "hs-form", "hs-button"]
-  - id: brand.markers
-    title: Brand markers on landing pages
+  - id: brand.logo
+    title: Logo on landing pages
+    severity: high
+  - id: brand.favicon
+    title: Favicon on landing pages
     severity: medium
+  - id: brand.heading
+    title: Page heading
+    severity: medium
+  - id: brand.colours
+    title: Landing page colour palette
+    severity: medium
+    params:
+      maxColours: 8
+  - id: brand.markers
+    title: Extra brand phrases
+    severity: low
     params:
       markers: []

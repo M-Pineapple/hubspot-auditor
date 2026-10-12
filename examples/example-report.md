@@ -2,13 +2,13 @@
 
 This report uses a fictional sample portal. It is not a customer account.
 
-Score: **15** (share of checks that are working).
+Score: **30** (share of checks that are working).
 
 | Status | Count |
 | --- | ---: |
-| Working | 6 |
-| Broken | 20 |
-| Missing | 14 |
+| Working | 14 |
+| Broken | 21 |
+| Missing | 11 |
 
 ## Broken
 
@@ -117,6 +117,13 @@ Score: **15** (share of checks that are working).
 - Evidence: Original source is missing on too many sampled contacts.
 - Fix: Stop blank imports from clearing original source.
 
+### Favicon on landing pages
+
+- Severity: medium
+- Check: `brand.favicon`
+- Evidence: 1 published page(s) have no favicon.
+- Fix: Add a rel=icon link in the page head.
+
 ### Landing page titles and descriptions
 
 - Severity: medium
@@ -153,27 +160,6 @@ Score: **15** (share of checks that are working).
 - Fix: Attach each live asset to a campaign.
 
 ## Missing
-
-### Email subscription types
-
-- Severity: high
-- Check: `program.subscription-types`
-- Evidence: No email subscription type was returned.
-- Fix: Create subscription types before the next marketing send.
-
-### Lifecycle funnel
-
-- Severity: high
-- Check: `reporting.lifecycle-funnel`
-- Evidence: No lifecycle funnel report was returned.
-- Fix: Build a funnel from subscriber to customer.
-
-### Brand markers on landing pages
-
-- Severity: medium
-- Check: `brand.markers`
-- Evidence: No brand markers are configured.
-- Fix: Add phrases, colour tokens, or asset names under params.markers.
 
 ### Nurture sequence
 
@@ -254,6 +240,13 @@ Score: **15** (share of checks that are working).
 
 ## Working
 
+### Logo on landing pages
+
+- Severity: high
+- Check: `brand.logo`
+- Evidence: Published pages include a logo image or SVG.
+- Fix: Put the logo in the shared page header.
+
 ### Landing page call to action
 
 - Severity: high
@@ -268,6 +261,13 @@ Score: **15** (share of checks that are working).
 - Evidence: 1 landing page(s) are published.
 - Fix: Keep a draft only while it is still being edited.
 
+### Subscription type on published emails
+
+- Severity: high
+- Check: `email.subscription-coverage`
+- Evidence: Published emails are tied to a subscription type.
+- Fix: Keep one subscription type per email.
+
 ### Live forms
 
 - Severity: high
@@ -275,12 +275,54 @@ Score: **15** (share of checks that are working).
 - Evidence: 2 form(s) are not archived.
 - Fix: Archive forms that no page still embeds.
 
+### Email subscription types
+
+- Severity: high
+- Check: `program.subscription-types`
+- Evidence: 1 subscription type(s) are defined.
+- Fix: Map each marketing email to one subscription type.
+
+### Lifecycle funnel
+
+- Severity: high
+- Check: `reporting.lifecycle-funnel`
+- Evidence: The contact sample spans 4 lifecycle stages.
+- Fix: Use the same stage names on the funnel report.
+
+### Landing page colour palette
+
+- Severity: medium
+- Check: `brand.colours`
+- Evidence: Published pages use a stylesheet or a small colour set.
+- Fix: Keep new pages on that palette.
+
+### Page heading
+
+- Severity: medium
+- Check: `brand.heading`
+- Evidence: Published pages include a level-one heading.
+- Fix: Give each landing page one h1.
+
+### Record owners
+
+- Severity: medium
+- Check: `program.owners`
+- Evidence: 1 owner record(s) are present.
+- Fix: Give every new contact and deal an owner.
+
 ### Dashboards
 
 - Severity: medium
 - Check: `reporting.dashboards`
 - Evidence: 1 dashboard(s) are present.
 - Fix: Keep one operating dashboard for the revenue team.
+
+### Extra brand phrases
+
+- Severity: low
+- Check: `brand.markers`
+- Evidence: No extra phrases are configured. Logo, favicon, heading, and colour checks still run.
+- Fix: Add params.markers only for words that must appear verbatim.
 
 ### Connected apps
 
@@ -318,17 +360,15 @@ Score: **15** (share of checks that are working).
 
 ### 60 days
 
+- medium: Favicon on landing pages. Add a rel=icon link in the page head.
 - medium: Landing page titles and descriptions. Fill the HTML title and meta description before the next campaign.
 - medium: Lifecycle and lead status. Clear the conflicting lead status when lifecycle stage changes.
 - medium: Webhook subscriptions. Repair or remove the inactive subscription.
 - medium: Deal stage probabilities. Set a realistic probability on each open stage.
 - medium: Campaign links on live assets. Attach each live asset to a campaign.
-- high: Email subscription types. Create subscription types before the next marketing send.
-- high: Lifecycle funnel. Build a funnel from subscriber to customer.
 
 ### 90 days
 
-- medium: Brand markers on landing pages. Add phrases, colour tokens, or asset names under params.markers.
 - medium: Nurture sequence. Add one short nurture for new leads.
 - medium: Unengaged contacts. Add a sunset workflow after a set number of unopened emails.
 - medium: Follow-up email. Add a follow-up email or a workflow enrolment on submit.

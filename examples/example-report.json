@@ -2,11 +2,11 @@
   "portalName": "Harbour Glass Co",
   "fictional": true,
   "generatedAt": "2026-10-12T00:00:00.000Z",
-  "score": 15,
+  "score": 30,
   "counts": {
-    "working": 6,
-    "broken": 20,
-    "missing": 14
+    "working": 14,
+    "broken": 21,
+    "missing": 11
   },
   "findings": [
     {
@@ -35,6 +35,15 @@
       "title": "Tracking code on the public site",
       "evidence": "The public page HTML does not include the HubSpot tracking script.",
       "recommendedFix": "Add the portal tracking code to the site layout."
+    },
+    {
+      "id": "brand.logo",
+      "auditor": "brand",
+      "status": "working",
+      "severity": "high",
+      "title": "Logo on landing pages",
+      "evidence": "Published pages include a logo image or SVG.",
+      "recommendedFix": "Put the logo in the shared page header."
     },
     {
       "id": "brand.page-cta",
@@ -89,6 +98,15 @@
       "title": "Required properties filled",
       "evidence": "1 required property name(s) are below the fill ratio: email.",
       "recommendedFix": "Make the thin properties required on the create forms and backfill the blanks."
+    },
+    {
+      "id": "email.subscription-coverage",
+      "auditor": "email",
+      "status": "working",
+      "severity": "high",
+      "title": "Subscription type on published emails",
+      "evidence": "Published emails are tied to a subscription type.",
+      "recommendedFix": "Keep one subscription type per email."
     },
     {
       "id": "email.workflows-health",
@@ -156,20 +174,20 @@
     {
       "id": "program.subscription-types",
       "auditor": "program",
-      "status": "missing",
+      "status": "working",
       "severity": "high",
       "title": "Email subscription types",
-      "evidence": "No email subscription type was returned.",
-      "recommendedFix": "Create subscription types before the next marketing send."
+      "evidence": "1 subscription type(s) are defined.",
+      "recommendedFix": "Map each marketing email to one subscription type."
     },
     {
       "id": "reporting.lifecycle-funnel",
       "auditor": "reporting",
-      "status": "missing",
+      "status": "working",
       "severity": "high",
       "title": "Lifecycle funnel",
-      "evidence": "No lifecycle funnel report was returned.",
-      "recommendedFix": "Build a funnel from subscriber to customer."
+      "evidence": "The contact sample spans 4 lifecycle stages.",
+      "recommendedFix": "Use the same stage names on the funnel report."
     },
     {
       "id": "tracking.cookie-banner",
@@ -190,13 +208,31 @@
       "recommendedFix": "Stop blank imports from clearing original source."
     },
     {
-      "id": "brand.markers",
+      "id": "brand.colours",
       "auditor": "brand",
-      "status": "missing",
+      "status": "working",
       "severity": "medium",
-      "title": "Brand markers on landing pages",
-      "evidence": "No brand markers are configured.",
-      "recommendedFix": "Add phrases, colour tokens, or asset names under params.markers."
+      "title": "Landing page colour palette",
+      "evidence": "Published pages use a stylesheet or a small colour set.",
+      "recommendedFix": "Keep new pages on that palette."
+    },
+    {
+      "id": "brand.favicon",
+      "auditor": "brand",
+      "status": "broken",
+      "severity": "medium",
+      "title": "Favicon on landing pages",
+      "evidence": "1 published page(s) have no favicon.",
+      "recommendedFix": "Add a rel=icon link in the page head."
+    },
+    {
+      "id": "brand.heading",
+      "auditor": "brand",
+      "status": "working",
+      "severity": "medium",
+      "title": "Page heading",
+      "evidence": "Published pages include a level-one heading.",
+      "recommendedFix": "Give each landing page one h1."
     },
     {
       "id": "brand.page-meta",
@@ -307,6 +343,15 @@
       "recommendedFix": "Turn on predictive lead scoring or name your score property in the YAML."
     },
     {
+      "id": "program.owners",
+      "auditor": "program",
+      "status": "working",
+      "severity": "medium",
+      "title": "Record owners",
+      "evidence": "1 owner record(s) are present.",
+      "recommendedFix": "Give every new contact and deal an owner."
+    },
+    {
       "id": "reporting.attribution",
       "auditor": "reporting",
       "status": "missing",
@@ -332,6 +377,15 @@
       "title": "UTM capture",
       "evidence": "UTM properties exist but most sampled values are empty.",
       "recommendedFix": "Pass UTM parameters into hidden form fields."
+    },
+    {
+      "id": "brand.markers",
+      "auditor": "brand",
+      "status": "working",
+      "severity": "low",
+      "title": "Extra brand phrases",
+      "evidence": "No extra phrases are configured. Logo, favicon, heading, and colour checks still run.",
+      "recommendedFix": "Add params.markers only for words that must appear verbatim."
     },
     {
       "id": "crm.unused-custom-properties",
@@ -394,19 +448,17 @@
     {
       "days": 60,
       "items": [
+        "medium: Favicon on landing pages. Add a rel=icon link in the page head.",
         "medium: Landing page titles and descriptions. Fill the HTML title and meta description before the next campaign.",
         "medium: Lifecycle and lead status. Clear the conflicting lead status when lifecycle stage changes.",
         "medium: Webhook subscriptions. Repair or remove the inactive subscription.",
         "medium: Deal stage probabilities. Set a realistic probability on each open stage.",
-        "medium: Campaign links on live assets. Attach each live asset to a campaign.",
-        "high: Email subscription types. Create subscription types before the next marketing send.",
-        "high: Lifecycle funnel. Build a funnel from subscriber to customer."
+        "medium: Campaign links on live assets. Attach each live asset to a campaign."
       ]
     },
     {
       "days": 90,
       "items": [
-        "medium: Brand markers on landing pages. Add phrases, colour tokens, or asset names under params.markers.",
         "medium: Nurture sequence. Add one short nurture for new leads.",
         "medium: Unengaged contacts. Add a sunset workflow after a set number of unopened emails.",
         "medium: Follow-up email. Add a follow-up email or a workflow enrolment on submit.",

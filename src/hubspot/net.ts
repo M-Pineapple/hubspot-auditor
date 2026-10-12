@@ -90,6 +90,41 @@ function headerRecord(headers: HeadersInit | undefined): Record<string, string> 
   return record;
 }
 
+export interface MailAuth {
+  spf: "pass" | "missing";
+  dkim: "pass" | "missing";
+  dmarc: "pass" | "missing";
+}
+
+export function classifyMailAuth(records: { name: string; value: string }[], domain: string): MailAuth {
+  const host = domain.toLowerCase().replace(/\.$/, "");
+  const rows = records.map((record) => ({
+    name: record.name.toLowerCase().replace(/\.$/, ""),
+    value: record.value.toLowerCase().replaceAll('"', ""),
+  }));
+  const spf = rows.some((row) => (row.name === host || row.name.endsWith(`.${host}`)) && row.value.includes("v=spf1") && row.name === host);
+  const dmarc = rows.some((row) => row.name === `_dmarc.${host}` && row.value.includes("v=dmarc1"));
+  const dkim = rows.some((row) => row.name.endsWith(`._domainkey.${host}`) && (row.value.includes("v=dkim1") || row.value.includes("p=")));
+  return {
+    spf: spf ? "pass" : "missing",
+    dkim: dkim ? "pass" : "missing",
+    dmarc: dmarc ? "pass" : "missing",
+  };
+}
+
+export async function lookupTxt(hostname: string): Promise<string[]> {
+  const response = await requestHttps(
+    "1.1.1.1",
+    "cloudflare-dns.com",
+    `/dns-query?name=${encodeURIComponent(hostname)}&type=TXT`,
+    { accept: "application/dns-json" },
+  );
+  const body = (await response.json()) as { Answer?: { type?: number; data?: string }[] };
+  return (body.Answer ?? [])
+    .filter((item) => item.type === 16 && item.data)
+    .map((item) => String(item.data).replaceAll('"', ""));
+}
+
 export async function resilientFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
   try {
     return await fetch(input, init);

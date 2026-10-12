@@ -10,7 +10,8 @@ test("program checks lists, lead score, subscription types, and campaigns", () =
       { objectType: "contacts", name: "hs_predictivecontactscore", label: "Score", custom: false, required: false, filledCount: 3, totalCount: 4 },
     ],
     subscriptionTypes: [{ id: "s1", name: "Marketing" }],
-    emails: [{ id: "e1", name: "Welcome", subject: "Welcome", published: true, hasCampaign: true }],
+    emails: [{ id: "e1", name: "Welcome", subject: "Welcome", published: true, hasCampaign: true, hasSubscription: true }],
+    owners: [{ id: "o1" }],
     landingPages: [
       { id: "p1", name: "Offer", published: true, metaTitle: "Offer", metaDescription: "Offer", html: "<p></p>", hasCampaign: true },
     ],
@@ -19,6 +20,8 @@ test("program checks lists, lead score, subscription types, and campaigns", () =
   assert.equal(runCheck(rule("program.lead-score", "program", { names: ["hs_predictivecontactscore"] }), ready).status, "working");
   assert.equal(runCheck(rule("program.subscription-types", "program"), ready).status, "working");
   assert.equal(runCheck(rule("program.campaigns", "program"), ready).status, "working");
+  assert.equal(runCheck(rule("program.owners", "program"), ready).status, "working");
+  assert.equal(runCheck(rule("email.subscription-coverage", "email"), ready).status, "working");
 });
 
 test("program reports a score property that never fills", () => {

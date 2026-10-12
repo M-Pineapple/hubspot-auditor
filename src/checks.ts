@@ -210,7 +210,16 @@ export const checks: Record<string, CheckFn> = {
     const blocked = blockedFinding(rule, snapshot, "pipelines-deals", "Grant the read scope for deal pipelines and run the audit again.");
     if (blocked) return blocked;
     const expected = strList(rule.params, "properties");
-    const bare = snapshot.pipelines.filter((pipeline) =>
+    const deals = snapshot.pipelines.filter((pipeline) => pipeline.objectType === "deals");
+    if (deals.some((pipeline) => pipeline.requirementsKnown === false)) {
+      return finding(
+        rule,
+        "missing",
+        "The pipeline read does not include required properties for each stage.",
+        "HubSpot did not return those rules on the pipeline payload, so this audit cannot score them.",
+      );
+    }
+    const bare = deals.filter((pipeline) =>
       pipeline.objectType === "deals" && pipeline.stages.some((stage) => expected.some((name) => !stage.requiredProperties.includes(name))),
     );
     if (bare.length === 0) {
@@ -568,11 +577,18 @@ export const checks: Record<string, CheckFn> = {
   },
 
   "reporting.lifecycle-funnel": ({ snapshot, rule }) => {
-    const blocked = blockedFinding(rule, snapshot, "reports", "Grant the reporting read scope and run the audit again.");
-    if (blocked) return blocked;
+    const stages = new Set(snapshot.contacts.map((contact) => contact.lifecycleStage?.trim()).filter((stage) => stage));
+    if (stages.size >= 2) {
+      return finding(rule, "working", `The contact sample spans ${stages.size} lifecycle stages.`, "Use the same stage names on the funnel report.");
+    }
     const reports = snapshot.reports.filter((report) => report.kind === "lifecycle-funnel");
     if (reports.length > 0) {
       return finding(rule, "working", `${reports.length} lifecycle funnel report(s) are present.`, "Use the same stage names as the CRM properties.");
+    }
+    const blocked = blockedFinding(rule, snapshot, "reports", "Grant the reporting read scope and run the audit again.");
+    if (blocked && stages.size === 0) return blocked;
+    if (stages.size === 1) {
+      return finding(rule, "missing", "Sampled contacts use only one lifecycle stage.", "Move contacts through the stages so a funnel can be read.");
     }
     return finding(rule, "missing", "No lifecycle funnel report was returned.", "Build a funnel from subscriber to customer.");
   },
@@ -636,7 +652,12 @@ export const checks: Record<string, CheckFn> = {
   "brand.markers": ({ snapshot, rule }) => {
     const markers = strList(rule.params, "markers");
     if (markers.length === 0) {
-      return finding(rule, "missing", "No brand markers are configured.", "Add phrases, colour tokens, or asset names under params.markers.");
+      return finding(
+        rule,
+        "working",
+        "No extra phrases are configured. Logo, favicon, heading, and colour checks still run.",
+        "Add params.markers only for words that must appear verbatim.",
+      );
     }
     const blocked = blockedFinding(rule, snapshot, "landing-pages", "Grant the CMS read scope and run the audit again.");
     if (blocked) return blocked;
@@ -729,19 +750,90 @@ export const checks: Record<string, CheckFn> = {
     const emailsBlocked = blockedFinding(rule, snapshot, "emails", "Grant the marketing email read scope and run the audit again.");
     if (pagesBlocked && emailsBlocked) return pagesBlocked;
     const assets = [
-      ...snapshot.landingPages.filter((page) => page.published),
-      ...snapshot.emails.filter((email) => email.published),
+      ...snapshot.landingPages.filter((page) => page.published && page.hasCampaign !== null),
+      ...snapshot.emails.filter((email) => email.published && email.hasCampaign !== null),
     ];
     if (assets.length === 0) {
       return finding(rule, "missing", "No published page or email was available.", "Publish an asset before judging campaign links.");
     }
-    const bare = assets.filter((asset) => !asset.hasCampaign).length;
+    const bare = assets.filter((asset) => asset.hasCampaign === false).length;
     if (bare === 0) {
       return finding(rule, "working", "Published pages and emails are linked to a campaign.", "Keep one campaign per offer.");
     }
     return finding(rule, "broken", `${bare} published page or email asset(s) have no campaign.`, "Attach each live asset to a campaign.");
   },
+
+  "brand.logo": ({ snapshot, rule }) => pageMark(rule, snapshot, (html) => /logo/i.test(html) || /<svg[\s>]/i.test(html), "logo image or SVG", "Put the logo in the shared page header."),
+
+  "brand.favicon": ({ snapshot, rule }) => pageMark(rule, snapshot, (html) => /rel=["'](?:shortcut icon|icon|apple-touch-icon)/i.test(html), "favicon", "Add a rel=icon link in the page head."),
+
+  "brand.heading": ({ snapshot, rule }) => pageMark(rule, snapshot, (html) => /<h1[\s>]/i.test(html), "level-one heading", "Give each landing page one h1."),
+
+  "brand.colours": ({ snapshot, rule }) => {
+    const pages = pageHtml(rule, snapshot);
+    if ("blocked" in pages) return pages.blocked;
+    const loud = pages.html.filter((html) => colourCount(html) > num(rule.params, "maxColours", 8));
+    const styled = pages.html.filter((html) => colourCount(html) > 0 || /stylesheet|\.css/i.test(html));
+    if (pages.html.length === 0) {
+      return finding(rule, "missing", "Published landing page HTML was not fetched.", "Fetch the page before judging colours.");
+    }
+    if (loud.length > 0) {
+      return finding(rule, "broken", `${loud.length} published page(s) use more than the colour limit.`, "Keep the page on the shared palette.");
+    }
+    if (styled.length === pages.html.length) {
+      return finding(rule, "working", "Published pages use a stylesheet or a small colour set.", "Keep new pages on that palette.");
+    }
+    return finding(rule, "missing", "Fetched HTML has no colour values and no stylesheet.", "Publish the page styles with the HTML or the stylesheet link.");
+  },
+
+  "email.subscription-coverage": ({ snapshot, rule }) => {
+    const blocked = blockedFinding(rule, snapshot, "emails", "Grant the marketing email read scope and run the audit again.");
+    if (blocked) return blocked;
+    const published = snapshot.emails.filter((email) => email.published);
+    if (published.length === 0) {
+      return finding(rule, "missing", "No published marketing email was returned.", "Publish one email before judging subscription types.");
+    }
+    const bare = published.filter((email) => !email.hasSubscription);
+    if (bare.length === 0) {
+      return finding(rule, "working", "Published emails are tied to a subscription type.", "Keep one subscription type per email.");
+    }
+    return finding(rule, "broken", `${bare.length} published email(s) have no subscription type.`, "Choose a subscription type before the next send.");
+  },
+
+  "program.owners": ({ snapshot, rule }) => {
+    const blocked = blockedFinding(rule, snapshot, "owners", "Grant the owners read scope and run the audit again.");
+    if (blocked) return blocked;
+    if (snapshot.owners.length > 0) {
+      return finding(rule, "working", `${snapshot.owners.length} owner record(s) are present.`, "Give every new contact and deal an owner.");
+    }
+    return finding(rule, "missing", "No owner record was returned.", "Add the people who should own contacts and deals.");
+  },
 };
+
+function pageHtml(rule: CheckRule, snapshot: PortalSnapshot): { blocked: Finding } | { html: string[] } {
+  const blocked = blockedFinding(rule, snapshot, "landing-pages", "Grant the CMS read scope and run the audit again.");
+  if (blocked) return { blocked };
+  return { html: snapshot.landingPages.filter((page) => page.published && page.html).map((page) => page.html ?? "") };
+}
+
+function pageMark(rule: CheckRule, snapshot: PortalSnapshot, present: (html: string) => boolean, noun: string, fix: string): Finding {
+  const pages = pageHtml(rule, snapshot);
+  if ("blocked" in pages) return pages.blocked;
+  if (pages.html.length === 0) {
+    return finding(rule, "missing", "Published landing page HTML was not fetched.", "Fetch the page before judging the brand.");
+  }
+  const bare = pages.html.filter((html) => !present(html));
+  if (bare.length === 0) {
+    return finding(rule, "working", `Published pages include a ${noun}.`, fix);
+  }
+  return finding(rule, "broken", `${bare.length} published page(s) have no ${noun}.`, fix);
+}
+
+function colourCount(html: string): number {
+  const found = html.match(/#[0-9a-fA-F]{3,8}\b/g) ?? [];
+  const neutrals = new Set(["#fff", "#ffffff", "#000", "#000000"]);
+  return new Set(found.map((colour) => colour.toLowerCase()).filter((colour) => !neutrals.has(colour) && (colour.length === 4 || colour.length === 7))).size;
+}
 
 export function runCheck(rule: CheckRule, snapshot: PortalSnapshot): Finding {
   const fn = checks[rule.id];
