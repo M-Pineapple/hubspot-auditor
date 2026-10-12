@@ -1,0 +1,326 @@
+{
+  "portalName": "Harbour Glass Co",
+  "fictional": true,
+  "generatedAt": "2026-10-12T00:00:00.000Z",
+  "score": 13,
+  "counts": {
+    "working": 4,
+    "broken": 16,
+    "missing": 10
+  },
+  "findings": [
+    {
+      "id": "email.sender-authentication",
+      "auditor": "email",
+      "status": "broken",
+      "severity": "critical",
+      "title": "Sender domain authentication",
+      "evidence": "1 sender domain(s) are missing a pass on SPF, DKIM, or DMARC.",
+      "recommendedFix": "Publish the missing DNS records before the next campaign."
+    },
+    {
+      "id": "forms.gdpr-consent",
+      "auditor": "forms",
+      "status": "broken",
+      "severity": "critical",
+      "title": "GDPR consent on forms",
+      "evidence": "1 live form(s) have no GDPR consent field.",
+      "recommendedFix": "Add a consent checkbox and store the lawful basis."
+    },
+    {
+      "id": "tracking.install-code",
+      "auditor": "tracking",
+      "status": "broken",
+      "severity": "critical",
+      "title": "Tracking code on the public site",
+      "evidence": "The public page HTML does not include the HubSpot tracking script.",
+      "recommendedFix": "Add the portal tracking code to the site layout."
+    },
+    {
+      "id": "crm.duplicate-companies",
+      "auditor": "crm",
+      "status": "broken",
+      "severity": "high",
+      "title": "Duplicate companies",
+      "evidence": "1 domain(s) are shared by more than one company.",
+      "recommendedFix": "Merge companies that share a domain."
+    },
+    {
+      "id": "crm.duplicate-contacts",
+      "auditor": "crm",
+      "status": "broken",
+      "severity": "high",
+      "title": "Duplicate contacts",
+      "evidence": "1 email address(es) are shared by more than one contact.",
+      "recommendedFix": "Merge the duplicate contacts and turn on a create-time duplicate rule."
+    },
+    {
+      "id": "crm.missing-required-properties",
+      "auditor": "crm",
+      "status": "broken",
+      "severity": "high",
+      "title": "Required properties filled",
+      "evidence": "1 required property name(s) are below the fill ratio: email.",
+      "recommendedFix": "Make the thin properties required on the create forms and backfill the blanks."
+    },
+    {
+      "id": "email.workflows-health",
+      "auditor": "email",
+      "status": "broken",
+      "severity": "high",
+      "title": "Workflow health",
+      "evidence": "1 workflow(s) are in error. 1 active workflow(s) have no enrolment.",
+      "recommendedFix": "Open the errored workflows and fix the failing action."
+    },
+    {
+      "id": "forms.field-mapping",
+      "auditor": "forms",
+      "status": "broken",
+      "severity": "high",
+      "title": "Form field mapping",
+      "evidence": "1 form field(s) have no property mapping.",
+      "recommendedFix": "Map each field to a contact or company property."
+    },
+    {
+      "id": "forms.live-forms",
+      "auditor": "forms",
+      "status": "working",
+      "severity": "high",
+      "title": "Live forms",
+      "evidence": "2 form(s) are not archived.",
+      "recommendedFix": "Archive forms that no page still embeds."
+    },
+    {
+      "id": "forms.spam-protection",
+      "auditor": "forms",
+      "status": "broken",
+      "severity": "high",
+      "title": "Spam protection",
+      "evidence": "1 live form(s) have no spam protection.",
+      "recommendedFix": "Turn on CAPTCHA or another spam control."
+    },
+    {
+      "id": "integrations.sync-errors",
+      "auditor": "integrations",
+      "status": "broken",
+      "severity": "high",
+      "title": "Sync errors",
+      "evidence": "1 app(s) and 1 webhook(s) report sync errors.",
+      "recommendedFix": "Open the failing sync and replay or pause it."
+    },
+    {
+      "id": "pipelines.stale-deals",
+      "auditor": "pipelines",
+      "status": "broken",
+      "severity": "high",
+      "title": "Stale deals",
+      "evidence": "1 sampled deal(s) have not been updated for 30 days or more.",
+      "recommendedFix": "Create a workflow that tasks the owner when a deal goes stale."
+    },
+    {
+      "id": "reporting.lifecycle-funnel",
+      "auditor": "reporting",
+      "status": "missing",
+      "severity": "high",
+      "title": "Lifecycle funnel",
+      "evidence": "No lifecycle funnel report was returned.",
+      "recommendedFix": "Build a funnel from subscriber to customer."
+    },
+    {
+      "id": "tracking.cookie-banner",
+      "auditor": "tracking",
+      "status": "broken",
+      "severity": "high",
+      "title": "Cookie banner",
+      "evidence": "The public page does not show a known cookie-banner marker.",
+      "recommendedFix": "Add a consent banner before non-essential HubSpot cookies load."
+    },
+    {
+      "id": "tracking.original-source",
+      "auditor": "tracking",
+      "status": "broken",
+      "severity": "high",
+      "title": "Original source attribution",
+      "evidence": "Original source is missing on too many sampled contacts.",
+      "recommendedFix": "Stop blank imports from clearing original source."
+    },
+    {
+      "id": "crm.lifecycle-lead-status",
+      "auditor": "crm",
+      "status": "broken",
+      "severity": "medium",
+      "title": "Lifecycle and lead status",
+      "evidence": "1 contact(s) use a conflicting lifecycle stage and lead status.",
+      "recommendedFix": "Clear the conflicting lead status when lifecycle stage changes."
+    },
+    {
+      "id": "email.nurture-sequence",
+      "auditor": "email",
+      "status": "missing",
+      "severity": "medium",
+      "title": "Nurture sequence",
+      "evidence": "No active nurture sequence was found.",
+      "recommendedFix": "Add one short nurture for new leads."
+    },
+    {
+      "id": "email.unengaged-handling",
+      "auditor": "email",
+      "status": "missing",
+      "severity": "medium",
+      "title": "Unengaged contacts",
+      "evidence": "No workflow handles unengaged contacts.",
+      "recommendedFix": "Add a sunset workflow after a set number of unopened emails."
+    },
+    {
+      "id": "forms.follow-up-email",
+      "auditor": "forms",
+      "status": "missing",
+      "severity": "medium",
+      "title": "Follow-up email",
+      "evidence": "1 embedded form(s) have no follow-up email.",
+      "recommendedFix": "Add a follow-up email or a workflow enrolment on submit."
+    },
+    {
+      "id": "integrations.webhook-subscriptions",
+      "auditor": "integrations",
+      "status": "broken",
+      "severity": "medium",
+      "title": "Webhook subscriptions",
+      "evidence": "1 webhook subscription(s) are inactive.",
+      "recommendedFix": "Repair or remove the inactive subscription."
+    },
+    {
+      "id": "pipelines.required-fields",
+      "auditor": "pipelines",
+      "status": "missing",
+      "severity": "medium",
+      "title": "Required fields per stage",
+      "evidence": "2 pipeline(s) have a stage that does not require the configured fields.",
+      "recommendedFix": "Mark those properties required before a record can enter the stage."
+    },
+    {
+      "id": "pipelines.stage-automation",
+      "auditor": "pipelines",
+      "status": "missing",
+      "severity": "medium",
+      "title": "Automation on stage change",
+      "evidence": "1 pipeline(s) have no stage-change automation.",
+      "recommendedFix": "Add a workflow or stage action for the first handoff stage."
+    },
+    {
+      "id": "pipelines.stage-probabilities",
+      "auditor": "pipelines",
+      "status": "broken",
+      "severity": "medium",
+      "title": "Deal stage probabilities",
+      "evidence": "1 later deal stage(s) are below 40% probability.",
+      "recommendedFix": "Set a realistic probability on each open stage."
+    },
+    {
+      "id": "reporting.attribution",
+      "auditor": "reporting",
+      "status": "missing",
+      "severity": "medium",
+      "title": "Attribution reports",
+      "evidence": "No attribution report was returned.",
+      "recommendedFix": "Add an attribution report for paid and organic channels."
+    },
+    {
+      "id": "reporting.dashboards",
+      "auditor": "reporting",
+      "status": "working",
+      "severity": "medium",
+      "title": "Dashboards",
+      "evidence": "1 dashboard(s) are present.",
+      "recommendedFix": "Keep one operating dashboard for the revenue team."
+    },
+    {
+      "id": "tracking.utm-capture",
+      "auditor": "tracking",
+      "status": "missing",
+      "severity": "medium",
+      "title": "UTM capture",
+      "evidence": "UTM properties exist but most sampled values are empty.",
+      "recommendedFix": "Pass UTM parameters into hidden form fields."
+    },
+    {
+      "id": "crm.unused-custom-properties",
+      "auditor": "crm",
+      "status": "missing",
+      "severity": "low",
+      "title": "Unused custom properties",
+      "evidence": "1 custom property name(s) have no values: favourite_glass.",
+      "recommendedFix": "Archive unused properties or start collecting them on a form."
+    },
+    {
+      "id": "forms.unused-forms",
+      "auditor": "forms",
+      "status": "missing",
+      "severity": "low",
+      "title": "Unused forms",
+      "evidence": "1 live form(s) are not embedded.",
+      "recommendedFix": "Embed the form or archive it."
+    },
+    {
+      "id": "integrations.connected-apps",
+      "auditor": "integrations",
+      "status": "working",
+      "severity": "low",
+      "title": "Connected apps",
+      "evidence": "1 app(s) are connected.",
+      "recommendedFix": "Remove apps you no longer use."
+    },
+    {
+      "id": "pipelines.ticket-pipeline",
+      "auditor": "pipelines",
+      "status": "working",
+      "severity": "low",
+      "title": "Ticket pipeline",
+      "evidence": "1 ticket pipeline(s) are defined.",
+      "recommendedFix": "Keep a closed stage and a required resolution field."
+    }
+  ],
+  "plan": [
+    {
+      "days": 30,
+      "items": [
+        "critical: Sender domain authentication. Publish the missing DNS records before the next campaign.",
+        "critical: GDPR consent on forms. Add a consent checkbox and store the lawful basis.",
+        "critical: Tracking code on the public site. Add the portal tracking code to the site layout.",
+        "high: Duplicate companies. Merge companies that share a domain.",
+        "high: Duplicate contacts. Merge the duplicate contacts and turn on a create-time duplicate rule.",
+        "high: Required properties filled. Make the thin properties required on the create forms and backfill the blanks.",
+        "high: Workflow health. Open the errored workflows and fix the failing action.",
+        "high: Form field mapping. Map each field to a contact or company property.",
+        "high: Spam protection. Turn on CAPTCHA or another spam control.",
+        "high: Sync errors. Open the failing sync and replay or pause it.",
+        "high: Stale deals. Create a workflow that tasks the owner when a deal goes stale.",
+        "high: Cookie banner. Add a consent banner before non-essential HubSpot cookies load.",
+        "high: Original source attribution. Stop blank imports from clearing original source."
+      ]
+    },
+    {
+      "days": 60,
+      "items": [
+        "medium: Lifecycle and lead status. Clear the conflicting lead status when lifecycle stage changes.",
+        "medium: Webhook subscriptions. Repair or remove the inactive subscription.",
+        "medium: Deal stage probabilities. Set a realistic probability on each open stage.",
+        "high: Lifecycle funnel. Build a funnel from subscriber to customer."
+      ]
+    },
+    {
+      "days": 90,
+      "items": [
+        "medium: Nurture sequence. Add one short nurture for new leads.",
+        "medium: Unengaged contacts. Add a sunset workflow after a set number of unopened emails.",
+        "medium: Follow-up email. Add a follow-up email or a workflow enrolment on submit.",
+        "medium: Required fields per stage. Mark those properties required before a record can enter the stage.",
+        "medium: Automation on stage change. Add a workflow or stage action for the first handoff stage.",
+        "medium: Attribution reports. Add an attribution report for paid and organic channels.",
+        "medium: UTM capture. Pass UTM parameters into hidden form fields.",
+        "low: Unused custom properties. Archive unused properties or start collecting them on a form.",
+        "low: Unused forms. Embed the form or archive it."
+      ]
+    }
+  ]
+}
