@@ -1,15 +1,48 @@
 {
   "name": "hubspot-auditor",
-  "version": "1.3.2",
+  "version": "1.4.0",
   "description": "Read-only MCP server that audits a HubSpot portal and reports what works, what is broken, and what is missing.",
   "type": "module",
   "license": "MIT",
-  "bin": {
-    "hubspot-auditor": "./bin/hubspot-auditor.js"
+  "author": "M-Pineapple",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/M-Pineapple/hubspot-auditor.git"
   },
+  "bugs": {
+    "url": "https://github.com/M-Pineapple/hubspot-auditor/issues"
+  },
+  "homepage": "https://github.com/M-Pineapple/hubspot-auditor/blob/main/examples/example-report.md",
+  "keywords": [
+    "hubspot",
+    "mcp",
+    "mcp-server",
+    "model-context-protocol",
+    "hubspot-api",
+    "audit",
+    "revops",
+    "crm",
+    "marketing-ops",
+    "gdpr",
+    "claude",
+    "typescript"
+  ],
+  "main": "./dist/main.js",
+  "bin": {
+    "hubspot-auditor": "./dist/main.js"
+  },
+  "files": [
+    "dist",
+    "rules",
+    "demo",
+    "CHANGELOG.md"
+  ],
   "scripts": {
-    "start": "node --experimental-strip-types src/server.ts",
-    "audit:demo": "node --experimental-strip-types src/cli.ts --demo --at 2026-10-12T00:00:00.000Z --out examples",
+    "build": "tsc -p tsconfig.build.json",
+    "prepublishOnly": "npm run build",
+    "start": "node dist/main.js",
+    "audit:demo": "node dist/main.js --demo --at 2026-10-12T00:00:00.000Z --out examples",
+    "pretest": "npm run build",
     "test": "node --experimental-strip-types --test tests/*.test.ts"
   },
   "engines": {

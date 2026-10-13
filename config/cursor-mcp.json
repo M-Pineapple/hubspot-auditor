@@ -1,8 +1,8 @@
 {
   "mcpServers": {
     "hubspot-auditor": {
-      "command": "node",
-      "args": ["--experimental-strip-types", "/path/to/hubspot-auditor/src/server.ts"],
+      "command": "npx",
+      "args": ["-y", "hubspot-auditor"],
       "env": {
         "HUBSPOT_ACCESS_TOKEN": "paste-a-read-only-private-app-token"
       }

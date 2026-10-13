@@ -1,21 +1,28 @@
 # HubSpot Auditor
 
 ![HubSpot Auditor](assets/hero.svg)
+
+[![npm version](https://img.shields.io/npm/v/hubspot-auditor.svg)](https://www.npmjs.com/package/hubspot-auditor)
+[![Licence: MIT](https://img.shields.io/badge/licence-MIT-blue.svg)](LICENSE)
+[![CI](https://github.com/M-Pineapple/hubspot-auditor/actions/workflows/ci.yml/badge.svg)](https://github.com/M-Pineapple/hubspot-auditor/actions/workflows/ci.yml)
+[![Node.js 22+](https://img.shields.io/badge/node-22%2B-brightgreen.svg)](https://nodejs.org)
 [![Listed on mcpservers.org](https://mcpservers.org/badge.svg)](https://mcpservers.org/servers/m-pineapple/hubspot-auditor)
 
 Read-only audit of a HubSpot portal. You get a scored report of what works, what is broken, and what is missing, plus a 30/60/90-day fix plan.
 
 The server speaks MCP over stdio. A CLI runs the same audit. It never sends POST, PUT, PATCH, or DELETE to HubSpot.
 
-What's new in v1.3.2: site fetches also refuse IPv6-mapped private addresses such as `[::ffff:127.0.0.1]`. See [CHANGELOG.md](CHANGELOG.md).
+What's new in v1.4.0: the CLI and MCP server ship as compiled JavaScript. Install with `npx`. See [CHANGELOG.md](CHANGELOG.md).
 
-What's new in v1.3.1: safer site fetches, PDF writes limited to `reports/`, and a runnable `hubspot-auditor` command. See [CHANGELOG.md](CHANGELOG.md).
+## Quick start
 
-What's new in v1.3.0: logo, favicon, heading, and colour checks, sender authentication from DNS, subscription coverage, owners, and a lifecycle funnel from the contact sample. See [CHANGELOG.md](CHANGELOG.md).
+You need Node.js 22 or newer.
 
-What's new in v1.2.0: a PDF report for a person to read, plus a DNS fallback when `api.hubapi.com` does not resolve.
+```bash
+npx -y hubspot-auditor --demo --out reports
+```
 
-What's new in v1.1.0: landing page and brand checks, buyer-journey email hooks, and list, score, subscription, and campaign checks. A failed ticket-pipeline read no longer hides the deal pipeline.
+Open `reports/example-report.md`.
 
 ## Who is this for?
 
@@ -95,9 +102,17 @@ You get a score of 30, with 14 working, 21 broken, and 11 missing. The first 30-
 You need Node.js 22 or newer.
 
 ```bash
+npm install -g hubspot-auditor
+hubspot-auditor --demo --out reports
+```
+
+Or, from a clone:
+
+```bash
 git clone https://github.com/M-Pineapple/hubspot-auditor.git
 cd hubspot-auditor
 npm install
+npm run build
 npm test
 npm run audit:demo
 ```
@@ -108,7 +123,7 @@ For a live portal, create a HubSpot private app and copy a token that has read s
 
 ```bash
 export HUBSPOT_ACCESS_TOKEN="paste-a-read-only-private-app-token"
-node --experimental-strip-types src/cli.ts --site https://example.com --summary
+hubspot-auditor --site https://example.com --summary
 ```
 
 `--site` is the public page the tracking checks fetch. `--summary` prints counts and check ids only.
@@ -135,17 +150,27 @@ If the system resolver cannot find `api.hubapi.com`, API reads fall back to DNS 
 
 `publicSiteUrl` must be `https`. Hosts that resolve to loopback, private, link-local, or CGNAT addresses are refused, and each redirect is checked again.
 
-### Claude Desktop
+### MCP config
 
-Use `config/claude-desktop.json`. Replace the path and the token.
+Paste this into Claude Desktop, Cursor, or Claude Code. Replace the token. For a demo-only server, you can omit the `env` block and call `run_audit` with `demo: true`.
 
-### Cursor
+```json
+{
+  "mcpServers": {
+    "hubspot-auditor": {
+      "command": "npx",
+      "args": ["-y", "hubspot-auditor"],
+      "env": {
+        "HUBSPOT_ACCESS_TOKEN": "paste-a-read-only-private-app-token"
+      }
+    }
+  }
+}
+```
 
-Use `config/cursor-mcp.json`. Replace the path and the token.
+The same file lives in `config/claude-desktop.json`, `config/cursor-mcp.json`, and `config/claude-code.json`.
 
-### Claude Code
-
-Add the same command from `config/claude-code.json` to your MCP settings.
+From a git clone, run `npm run build` and point the command at `node` with `args` set to `["/path/to/hubspot-auditor/dist/main.js"]`.
 
 Start the server on its own with:
 
@@ -188,12 +213,17 @@ The broken list starts with sender authentication, GDPR consent on forms, and th
 
 ## Extend a check
 
-1. Add an entry under `checks` in the matching `rules/*.yaml` file.
-2. Add a function with the same `id` in `src/checks.ts`.
-3. Add a test under `tests/` for that auditor.
-4. Run `npm test` and `npm run audit:demo`.
+See [CONTRIBUTING.md](CONTRIBUTING.md).
 
-An id with no function becomes a `missing` finding that names the id.
+## More MCP servers by M-Pineapple
+
+- [Claude-Project-Coordinator](https://github.com/M-Pineapple/Claude-Project-Coordinator)
+- [CryptoAnalysisMCP](https://github.com/M-Pineapple/CryptoAnalysisMCP)
+- [warp-command-runner](https://github.com/M-Pineapple/warp-command-runner)
+- [msty-admin-mcp](https://github.com/M-Pineapple/msty-admin-mcp)
+- [member-berries-apple-mcp](https://github.com/M-Pineapple/member-berries-apple-mcp)
+- [seashell](https://github.com/M-Pineapple/seashell)
+- [TextEdit-MCP](https://github.com/M-Pineapple/TextEdit-MCP)
 
 ## 💖 Support This Project
 
