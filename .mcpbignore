@@ -1,0 +1,8 @@
+live-report/
+.git/
+*.mcpb
+.DS_Store
+.env
+.env.*
+*.token
+node_modules/.cache

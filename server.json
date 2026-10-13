@@ -1,0 +1,30 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.M-Pineapple/hubspot-auditor",
+  "title": "HubSpot Auditor",
+  "description": "Read-only MCP server that audits a HubSpot portal: what works, what is broken, what is missing.",
+  "repository": {
+    "url": "https://github.com/M-Pineapple/hubspot-auditor",
+    "source": "github"
+  },
+  "version": "1.4.2",
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "hubspot-auditor",
+      "version": "1.4.2",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "HUBSPOT_ACCESS_TOKEN",
+          "description": "Read-only HubSpot private app token. Not needed for demo mode.",
+          "isRequired": false,
+          "isSecret": true,
+          "format": "string"
+        }
+      ]
+    }
+  ]
+}
