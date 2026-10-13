@@ -194,7 +194,6 @@ function mapForm(form: RawForm, html: string | null): FormDef {
     embedded: html ? html.includes(form.id) : null,
     unmappedFields: fields.length === 0 ? null : unmapped,
     gdprConsent: form.legalConsentOptions == null ? false : true,
-    followUpEmail: null,
     spamProtection: form.configuration?.recaptchaEnabled ?? null,
     followUpEmail: followUpFrom(form),
   };

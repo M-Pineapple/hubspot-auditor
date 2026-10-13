@@ -5,6 +5,23 @@ All notable changes to HubSpot Auditor are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] - 2026-10-13
+
+### Added
+
+- A TypeScript build that emits JavaScript under `dist/`. The `hubspot-auditor` command and the MCP server run that compiled output, so Node no longer needs `--experimental-strip-types`.
+- `prepublishOnly` runs the build so an npm publish ships `dist/`, `rules/`, and `demo/`.
+- A GitHub Actions workflow that runs the build and the tests.
+
+### Changed
+
+- MCP client configs use `npx -y hubspot-auditor`. From a git clone, run `npm run build` first and start `node dist/main.js`.
+
+### Fixed
+
+- The form mapper no longer lists `followUpEmail` twice, so the TypeScript build can emit.
+- The PDF test looks for demo contact domains instead of any `@` byte, which font streams can contain.
+
 ## [1.3.2] - 2026-10-13
 
 ### Fixed

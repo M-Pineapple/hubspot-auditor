@@ -2,9 +2,11 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { loadDemoPortal } from "./demo.ts";
+import { usage } from "./help.ts";
 import { loadPortal } from "./hubspot/load.ts";
 import { reportToPdf } from "./pdf.ts";
 import { audit, reportToJson, reportToMarkdown } from "./report.ts";
+import { version } from "./version.ts";
 
 function arg(name: string): string | undefined {
   const index = process.argv.indexOf(name);
@@ -12,6 +14,14 @@ function arg(name: string): string | undefined {
 }
 
 async function main(): Promise<void> {
+  if (process.argv.includes("--help") || process.argv.includes("-h")) {
+    process.stdout.write(usage);
+    return;
+  }
+  if (process.argv.includes("--version") || process.argv.includes("-v")) {
+    process.stdout.write(`${version}\n`);
+    return;
+  }
   const demo = process.argv.includes("--demo");
   const summary = process.argv.includes("--summary");
   const out = arg("--out");

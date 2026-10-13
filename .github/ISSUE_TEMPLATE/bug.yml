@@ -1,0 +1,39 @@
+name: Bug
+description: Something is wrong with a check, the report, or the CLI
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do not paste a HubSpot token, a `.env` file, or contact records.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you ran, what you expected, and what you got.
+    validations:
+      required: true
+  - type: dropdown
+    id: mode
+    attributes:
+      label: Mode
+      options:
+        - Demo (`--demo` or `demo: true`)
+        - Live portal
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Output of `hubspot-auditor --version`, or the git commit.
+    validations:
+      required: true
+  - type: input
+    id: node
+    attributes:
+      label: Node.js version
+      description: Output of `node -v`.
+    validations:
+      required: true
