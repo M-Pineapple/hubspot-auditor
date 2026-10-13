@@ -5,6 +5,12 @@ All notable changes to HubSpot Auditor are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.3] - 2026-10-13
+
+### Security
+
+- Site checks now treat RFC 2544 benchmarking (`198.18.0.0/15`), IETF protocol assignments (`192.0.0.0/24`), and documentation ranges (`192.0.2.0/24`, `198.51.100.0/24`, `203.0.113.0/24`) as non-public, including IPv4-mapped IPv6 forms.
+
 ## [1.4.2] - 2026-10-13
 
 ### Added

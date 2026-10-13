@@ -21,6 +21,24 @@ test("private and loopback addresses are rejected", () => {
   assert.equal(isNonPublicAddress("::ffff:8.8.8.8"), false);
 });
 
+test("reserved and documentation IPv4 ranges are rejected", () => {
+  for (const address of [
+    "198.18.0.1",
+    "198.19.255.254",
+    "192.0.0.1",
+    "192.0.2.1",
+    "198.51.100.1",
+    "203.0.113.1",
+    "::ffff:198.18.0.1",
+    "::ffff:192.0.2.1",
+    "::ffff:203.0.113.50",
+  ]) {
+    assert.equal(isNonPublicAddress(address), true, address);
+  }
+  assert.equal(isNonPublicAddress("198.20.0.1"), false);
+  assert.equal(isNonPublicAddress("192.0.1.1"), false);
+});
+
 test("site checks require a public https host", async () => {
   await assert.rejects(assertPublicDestination("http://example.com"), /https/);
   await assert.rejects(assertPublicDestination("https://127.0.0.1"), /public/);
