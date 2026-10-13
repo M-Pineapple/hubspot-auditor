@@ -14,6 +14,8 @@ Read-only audit of a HubSpot portal. You get a scored report of what works, what
 
 The server speaks MCP over stdio. A CLI runs the same audit. It never sends POST, PUT, PATCH, or DELETE to HubSpot.
 
+What's new in v1.4.1: the npm package record uses the current account email. See [CHANGELOG.md](CHANGELOG.md).
+
 What's new in v1.4.0: the CLI and MCP server ship as compiled JavaScript. Install with `npx`. See [CHANGELOG.md](CHANGELOG.md).
 
 ## Quick start
