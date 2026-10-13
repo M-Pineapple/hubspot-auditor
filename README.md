@@ -6,6 +6,8 @@ Read-only audit of a HubSpot portal. You get a scored report of what works, what
 
 The server speaks MCP over stdio. A CLI runs the same audit. It never sends POST, PUT, PATCH, or DELETE to HubSpot.
 
+What's new in v1.3.2: site fetches also refuse IPv6-mapped private addresses such as `[::ffff:127.0.0.1]`. See [CHANGELOG.md](CHANGELOG.md).
+
 What's new in v1.3.1: safer site fetches, PDF writes limited to `reports/`, and a runnable `hubspot-auditor` command. See [CHANGELOG.md](CHANGELOG.md).
 
 What's new in v1.3.0: logo, favicon, heading, and colour checks, sender authentication from DNS, subscription coverage, owners, and a lifecycle funnel from the contact sample. See [CHANGELOG.md](CHANGELOG.md).

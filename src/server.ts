@@ -10,7 +10,7 @@ import { audit, reportToJson, reportToMarkdown } from "./report.ts";
 import { resolveReportFile } from "./report-file.ts";
 import { loadRules } from "./rules.ts";
 
-const server = new McpServer({ name: "HubSpot Auditor", version: "1.3.1" });
+const server = new McpServer({ name: "HubSpot Auditor", version: "1.3.2" });
 
 server.registerTool(
   "list_checks",
