@@ -2,6 +2,8 @@
 
 ![HubSpot Auditor](assets/hero.svg)
 
+<img src="assets/demo.gif" alt="hubspot-auditor --demo printing a score of 30 on the fictional portal" width="720"/>
+
 [![npm version](https://img.shields.io/npm/v/hubspot-auditor.svg)](https://www.npmjs.com/package/hubspot-auditor)
 [![Licence: MIT](https://img.shields.io/badge/licence-MIT-blue.svg)](LICENSE)
 [![CI](https://github.com/M-Pineapple/hubspot-auditor/actions/workflows/ci.yml/badge.svg)](https://github.com/M-Pineapple/hubspot-auditor/actions/workflows/ci.yml)
