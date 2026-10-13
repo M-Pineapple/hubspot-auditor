@@ -1,6 +1,7 @@
 # HubSpot Auditor
 
 ![HubSpot Auditor](assets/hero.svg)
+[![Listed on mcpservers.org](https://mcpservers.org/badge.svg)](https://mcpservers.org/servers/m-pineapple/hubspot-auditor)
 
 Read-only audit of a HubSpot portal. You get a scored report of what works, what is broken, and what is missing, plus a 30/60/90-day fix plan.
 
