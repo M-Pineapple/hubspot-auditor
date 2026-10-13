@@ -5,6 +5,12 @@ All notable changes to HubSpot Auditor are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.4] - 2026-10-13
+
+### Security
+
+- Site checks extract the embedded IPv4 from NAT64 (`64:ff9b::/96`), 6to4 (`2002::/16`), and deprecated IPv4-compatible (`::a.b.c.d`) addresses and run it through the same non-public IPv4 check. The local-use NAT64 prefix (`64:ff9b:1::/48`) is blocked.
+
 ## [1.4.3] - 2026-10-13
 
 ### Security

@@ -39,11 +39,51 @@ test("reserved and documentation IPv4 ranges are rejected", () => {
   assert.equal(isNonPublicAddress("192.0.1.1"), false);
 });
 
+test("IPv6 embeddings of non-public IPv4 are rejected", () => {
+  for (const address of [
+    "64:ff9b::10.0.0.1",
+    "64:ff9b::127.0.0.1",
+    "64:ff9b::192.168.1.1",
+    "64:ff9b::169.254.169.254",
+    "64:ff9b::198.18.0.1",
+    "64:ff9b::7f00:1",
+    "64:ff9b::c0a8:1",
+    "[64:ff9b::10.0.0.1]",
+    "64:ff9b:1::",
+    "64:ff9b:1::10.0.0.1",
+    "64:ff9b:1::8.8.8.8",
+    "64:ff9b:1:c0a8:1:100::",
+    "2002:7f00:1::",
+    "2002:a00:1::1",
+    "2002:c0a8:1::1",
+    "2002:ac10:1::",
+    "2002:a9fe:a9fe::",
+    "2002:c000:201::",
+    "[2002:c0a8:1::1]",
+    "::10.0.0.1",
+    "::192.168.0.1",
+    "::127.0.0.1",
+    "::7f00:1",
+    "::c0a8:1",
+    "[::10.1.2.3]",
+  ]) {
+    assert.equal(isNonPublicAddress(address), true, address);
+  }
+  assert.equal(isNonPublicAddress("64:ff9b::8.8.8.8"), false);
+  assert.equal(isNonPublicAddress("64:ff9b::808:808"), false);
+  assert.equal(isNonPublicAddress("2002:808:808::"), false);
+  assert.equal(isNonPublicAddress("::8.8.8.8"), false);
+});
+
 test("site checks require a public https host", async () => {
   await assert.rejects(assertPublicDestination("http://example.com"), /https/);
   await assert.rejects(assertPublicDestination("https://127.0.0.1"), /public/);
   await assert.rejects(assertPublicDestination("https://[::ffff:127.0.0.1]/"), /public/);
   await assert.rejects(assertPublicDestination("https://[::1]/"), /public/);
+  await assert.rejects(assertPublicDestination("https://[64:ff9b::10.0.0.1]/"), /public/);
+  await assert.rejects(assertPublicDestination("https://[2002:c0a8:1::1]/"), /public/);
+  await assert.rejects(assertPublicDestination("https://[::10.0.0.1]/"), /public/);
+  await assert.rejects(assertPublicDestination("https://[64:ff9b:1::8.8.8.8]/"), /public/);
   await assert.rejects(
     assertPublicDestination("https://example.com", async () => ["10.0.0.8"]),
     /public/,

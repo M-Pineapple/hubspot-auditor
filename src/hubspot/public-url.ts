@@ -51,24 +51,33 @@ function expandIpv6(address: string): string[] | null {
   return [...left, ...Array(missing).fill("0"), ...right];
 }
 
-function mappedIpv4(address: string): string | null {
+function ipv4FromWords(hi: number, lo: number): string {
+  return `${hi >> 8}.${hi & 255}.${lo >> 8}.${lo & 255}`;
+}
+
+function embeddedIpv4(address: string): string | null {
   const groups = expandIpv6(address);
   if (!groups) return null;
   const words = groups.map((group) => parseInt(group || "0", 16));
-  if (words.slice(0, 5).some((word) => word !== 0) || words[5] !== 0xffff) return null;
-  return `${words[6] >> 8}.${words[6] & 255}.${words[7] >> 8}.${words[7] & 255}`;
+  const tail = ipv4FromWords(words[6], words[7]);
+  if (words.slice(0, 5).every((word) => word === 0) && words[5] === 0xffff) return tail;
+  if (words.slice(0, 6).every((word) => word === 0)) return tail;
+  if (words[0] === 0x64 && words[1] === 0xff9b && words.slice(2, 6).every((word) => word === 0)) return tail;
+  if (words[0] === 0x2002) return ipv4FromWords(words[1], words[2]);
+  return null;
 }
 
 export function isNonPublicAddress(address: string): boolean {
   const value = bareAddress(address);
   if (isIpv4(value)) return ipv4NonPublic(value);
-  const mapped = mappedIpv4(value);
-  if (mapped) return ipv4NonPublic(mapped);
+  const embedded = embeddedIpv4(value);
+  if (embedded) return ipv4NonPublic(embedded);
   const groups = expandIpv6(value);
   if (!groups) return false;
   const words = groups.map((group) => parseInt(group || "0", 16));
   if (words.every((word) => word === 0)) return true;
   if (words.slice(0, 7).every((word) => word === 0) && words[7] === 1) return true;
+  if (words[0] === 0x64 && words[1] === 0xff9b && words[2] === 1) return true;
   const first = words[0];
   if (first >= 0xfe80 && first <= 0xfebf) return true;
   if (first >= 0xfc00 && first <= 0xfdff) return true;
