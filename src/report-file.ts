@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, realpathSync } from "node:fs";
+import { lstatSync, mkdirSync, realpathSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 
 export function reportDirectory(): string {
@@ -17,7 +17,15 @@ export function resolveReportFile(name: string): string {
   if (realpathSync(dirname(target)) !== dir) {
     throw new Error("pdfPath escapes the report directory.");
   }
-  if (existsSync(target) && process.env.HUBSPOT_AUDITOR_PDF_OVERWRITE !== "1") {
+  let entry: ReturnType<typeof lstatSync> | undefined;
+  try {
+    entry = lstatSync(target);
+  } catch {
+    entry = undefined;
+  }
+  // lstat, not exists: a dangling symlink must not redirect the write outside the folder.
+  if (entry?.isSymbolicLink()) throw new Error("pdfPath must not be a symlink.");
+  if (entry && process.env.HUBSPOT_AUDITOR_PDF_OVERWRITE !== "1") {
     throw new Error(`Refusing to overwrite ${name}. Set HUBSPOT_AUDITOR_PDF_OVERWRITE=1 to replace it.`);
   }
   return target;

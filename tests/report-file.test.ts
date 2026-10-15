@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, realpathSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, realpathSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
@@ -20,4 +20,19 @@ test("pdfPath accepts only a file name inside the report directory", () => {
   assert.equal(resolveReportFile("audit.pdf"), target);
   delete process.env.HUBSPOT_AUDITOR_REPORT_DIR;
   delete process.env.HUBSPOT_AUDITOR_PDF_OVERWRITE;
+});
+
+test("a dangling symlink in the report folder is refused", () => {
+  const dir = mkdtempSync(join(tmpdir(), "hsr-"));
+  const outside = join(mkdtempSync(join(tmpdir(), "hso-")), "x.pdf");
+  symlinkSync(outside, join(dir, "evil.pdf"));
+  const previous = process.env.HUBSPOT_AUDITOR_REPORT_DIR;
+  process.env.HUBSPOT_AUDITOR_REPORT_DIR = dir;
+  try {
+    assert.throws(() => resolveReportFile("evil.pdf"));
+    assert.equal(existsSync(outside), false);
+  } finally {
+    if (previous === undefined) delete process.env.HUBSPOT_AUDITOR_REPORT_DIR;
+    else process.env.HUBSPOT_AUDITOR_REPORT_DIR = previous;
+  }
 });
