@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-import { writeFileSync } from "node:fs";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
@@ -7,7 +6,7 @@ import { loadDemoPortal } from "./demo.ts";
 import { loadPortal } from "./hubspot/load.ts";
 import { reportToPdf } from "./pdf.ts";
 import { audit, reportToJson, reportToMarkdown } from "./report.ts";
-import { resolveReportFile } from "./report-file.ts";
+import { writeReportFile } from "./report-file.ts";
 import { loadRules } from "./rules.ts";
 import { version } from "./version.ts";
 
@@ -50,8 +49,7 @@ server.registerTool(
     ];
     if (pdfPath) {
       try {
-        const target = resolveReportFile(pdfPath);
-        writeFileSync(target, await reportToPdf(report));
+        const target = writeReportFile(pdfPath, await reportToPdf(report));
         content.push({ type: "text", text: `Wrote the PDF report to ${target}.` });
       } catch (error) {
         return { content: [{ type: "text", text: (error as Error).message }], isError: true };

@@ -1,11 +1,73 @@
-import { existsSync, mkdirSync, realpathSync } from "node:fs";
-import { basename, dirname, join, resolve } from "node:path";
+import {
+  closeSync,
+  constants,
+  fstatSync,
+  lstatSync,
+  mkdirSync,
+  openSync,
+  realpathSync,
+  unlinkSync,
+  writeSync,
+} from "node:fs";
+import { basename, join, resolve, sep } from "node:path";
 
-export function reportDirectory(): string {
+type Identity = { path: string; dev: number; ino: number };
+
+/** Test-only hooks to reproduce races at exact points. Never set in production. */
+export const reportFileTestHooks: {
+  afterUnlink?: () => void;
+  beforeOpen?: () => void;
+  afterOpen?: () => void;
+} = {};
+
+/** Every component from "/" to the report directory, pinned at first use. */
+const pinnedChains = new Map<string, Identity[]>();
+
+function chainOf(realDir: string): Identity[] {
+  const parts = realDir.split(sep).filter(Boolean);
+  const chain: Identity[] = [];
+  let current: string = sep;
+  for (let i = -1; i < parts.length; i++) {
+    if (i >= 0) current = join(current, parts[i]);
+    const st = lstatSync(current);
+    if (st.isSymbolicLink()) throw new Error(`Report folder path contains a symlink: ${current}`);
+    if (!st.isDirectory()) throw new Error(`Report folder path is not a directory: ${current}`);
+    chain.push({ path: current, dev: st.dev, ino: st.ino });
+  }
+  return chain;
+}
+
+function verifyChain(chain: Identity[]): void {
+  for (const pinned of chain) {
+    let st;
+    try {
+      st = lstatSync(pinned.path);
+    } catch {
+      throw new Error("The report folder changed since it was first used.");
+    }
+    if (st.isSymbolicLink() || !st.isDirectory() || st.dev !== pinned.dev || st.ino !== pinned.ino) {
+      throw new Error("The report folder changed since it was first used.");
+    }
+  }
+}
+
+function configuredDirectory(): string {
   const configured = process.env.HUBSPOT_AUDITOR_REPORT_DIR;
-  const dir = configured ? resolve(configured) : resolve(process.cwd(), "reports");
-  mkdirSync(dir, { recursive: true });
-  return realpathSync(dir);
+  return configured ? resolve(configured) : resolve(process.cwd(), "reports");
+}
+
+/** Real path of the report directory; its whole path is pinned (dev/ino) at first use. */
+export function reportDirectory(): string {
+  const key = configuredDirectory();
+  const pinned = pinnedChains.get(key);
+  if (pinned) {
+    verifyChain(pinned);
+    return pinned[pinned.length - 1].path;
+  }
+  mkdirSync(key, { recursive: true });
+  const real = realpathSync(key);
+  pinnedChains.set(key, chainOf(real));
+  return real;
 }
 
 export function resolveReportFile(name: string): string {
@@ -14,11 +76,117 @@ export function resolveReportFile(name: string): string {
   }
   const dir = reportDirectory();
   const target = join(dir, name);
-  if (realpathSync(dirname(target)) !== dir) {
-    throw new Error("pdfPath escapes the report directory.");
+  let entry: ReturnType<typeof lstatSync> | undefined;
+  try {
+    entry = lstatSync(target);
+  } catch {
+    entry = undefined;
   }
-  if (existsSync(target) && process.env.HUBSPOT_AUDITOR_PDF_OVERWRITE !== "1") {
+  // lstat, not exists: a dangling symlink must not redirect the write outside the folder.
+  if (entry?.isSymbolicLink()) throw new Error("pdfPath must not be a symlink.");
+  if (entry && process.env.HUBSPOT_AUDITOR_PDF_OVERWRITE !== "1") {
     throw new Error(`Refusing to overwrite ${name}. Set HUBSPOT_AUDITOR_PDF_OVERWRITE=1 to replace it.`);
+  }
+  return target;
+}
+
+/**
+ * Open a resolved report path for writing. The folder's whole path is checked
+ * against the identities pinned at first use (no symlinks, same dev/ino), the
+ * file is created with O_CREAT|O_EXCL|O_NOFOLLOW, and after opening the folder
+ * and the opened file are re-checked so a swapped parent folder or a planted
+ * link cannot redirect the write. When overwriting, an existing regular file
+ * with a single link is removed first and recreated exclusively.
+ */
+export function openReportFileForWrite(target: string): number {
+  const key = configuredDirectory();
+  if (!pinnedChains.has(key)) reportDirectory();
+  const chain = pinnedChains.get(key)!;
+  const dir = chain[chain.length - 1];
+  if (join(dir.path, basename(target)) !== target) {
+    throw new Error("pdfPath is not inside the report folder.");
+  }
+  verifyChain(chain);
+
+  if (process.env.HUBSPOT_AUDITOR_PDF_OVERWRITE === "1") {
+    let existing;
+    try {
+      existing = lstatSync(target);
+    } catch {
+      existing = undefined;
+    }
+    if (existing) {
+      if (existing.isSymbolicLink()) throw new Error("pdfPath must not be a symlink.");
+      if (!existing.isFile()) throw new Error("pdfPath must be a regular file.");
+      if (existing.nlink > 1) throw new Error("pdfPath must not be a hard link.");
+      verifyChain(chain);
+      unlinkSync(target);
+      reportFileTestHooks.afterUnlink?.();
+    }
+  }
+
+  // Re-check the whole folder path right before the open (also after unlink).
+  verifyChain(chain);
+  reportFileTestHooks.beforeOpen?.();
+  let fd: number;
+  try {
+    fd = openSync(target, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW, 0o644);
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code;
+    if (code === "ELOOP" || code === "EMLINK") throw new Error("pdfPath must not be a symlink.");
+    if (code === "EEXIST") {
+      throw new Error("Refusing to overwrite the report. Set HUBSPOT_AUDITOR_PDF_OVERWRITE=1 to replace it.");
+    }
+    throw error;
+  }
+  let st: ReturnType<typeof fstatSync> | undefined;
+  try {
+    reportFileTestHooks.afterOpen?.();
+    st = fstatSync(fd);
+    if (!st.isFile()) throw new Error("pdfPath must be a regular file.");
+    if (st.nlink > 1) throw new Error("pdfPath must not be a hard link.");
+    // Containment: verifyChain lstats the pinned folder path itself (and every
+    // parent) and requires the dev/ino recorded at first use, so the folder we
+    // just created the file in is still the pinned one. The file must also be
+    // on that folder's device and be what dir/name names right now.
+    verifyChain(chain);
+    if (st.dev !== dir.dev) throw new Error("pdfPath is not inside the report folder.");
+    const named = lstatSync(join(dir.path, basename(target)));
+    if (named.isSymbolicLink() || named.ino !== st.ino || named.dev !== st.dev) {
+      throw new Error("pdfPath changed while it was being opened.");
+    }
+    return fd;
+  } catch (error) {
+    closeSync(fd);
+    // We created this file with O_EXCL; remove it only if the name still
+    // points at exactly what we opened. Otherwise leave it and say so.
+    let removed = false;
+    if (st) {
+      try {
+        const now = lstatSync(target);
+        if (!now.isSymbolicLink() && now.dev === st.dev && now.ino === st.ino) {
+          unlinkSync(target);
+          removed = true;
+        }
+      } catch {
+        removed = false;
+      }
+    }
+    const message = (error as Error).message;
+    throw new Error(removed ? message : `${message} The partially created file was left in place at ${target}; check it.`);
+  }
+}
+
+/** Resolve, open safely and write the report in one step. */
+export function writeReportFile(name: string, data: Uint8Array | string): string {
+  const target = resolveReportFile(name);
+  const fd = openReportFileForWrite(target);
+  try {
+    const buf = typeof data === "string" ? Buffer.from(data) : data;
+    let off = 0;
+    while (off < buf.length) off += writeSync(fd, buf, off, buf.length - off);
+  } finally {
+    closeSync(fd);
   }
   return target;
 }

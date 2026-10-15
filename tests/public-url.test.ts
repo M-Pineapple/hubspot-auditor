@@ -91,3 +91,18 @@ test("site checks require a public https host", async () => {
   const allowed = await assertPublicDestination("https://example.com/page", async () => ["93.184.216.34"]);
   assert.equal(allowed.address, "93.184.216.34");
 });
+
+test("15 Oct sweep: extra non-public IPv6/IPv4 forms are rejected", () => {
+  for (const address of [
+    "::ffff:0:7f00:1",
+    "::ffff:0:127.0.0.1",
+    "2001:0:4136:e378:8000:63bf:80ff:fffe",
+    "fec0::1",
+    "192.88.99.1",
+    "100::1",
+  ]) {
+    assert.equal(isNonPublicAddress(address), true, address);
+  }
+  assert.equal(isNonPublicAddress("2606:4700:4700::1111"), false);
+  assert.equal(isNonPublicAddress("2001:4860:4860::8888"), false);
+});

@@ -27,6 +27,7 @@ function ipv4NonPublic(value: string): boolean {
   if (a === 198 && (b === 18 || b === 19)) return true;
   if (a === 192 && b === 0 && c === 0) return true;
   if (a === 192 && b === 0 && c === 2) return true;
+  if (a === 192 && b === 88 && c === 99) return true;
   if (a === 198 && b === 51 && c === 100) return true;
   if (a === 203 && b === 0 && c === 113) return true;
   return a >= 224;
@@ -62,6 +63,8 @@ function embeddedIpv4(address: string): string | null {
   const tail = ipv4FromWords(words[6], words[7]);
   if (words.slice(0, 5).every((word) => word === 0) && words[5] === 0xffff) return tail;
   if (words.slice(0, 6).every((word) => word === 0)) return tail;
+  // IPv4-translated ::ffff:0:a.b.c.d (RFC 2765)
+  if (words.slice(0, 4).every((word) => word === 0) && words[4] === 0xffff && words[5] === 0) return tail;
   if (words[0] === 0x64 && words[1] === 0xff9b && words.slice(2, 6).every((word) => word === 0)) return tail;
   if (words[0] === 0x2002) return ipv4FromWords(words[1], words[2]);
   return null;
@@ -79,7 +82,9 @@ export function isNonPublicAddress(address: string): boolean {
   if (words.slice(0, 7).every((word) => word === 0) && words[7] === 1) return true;
   if (words[0] === 0x64 && words[1] === 0xff9b && words[2] === 1) return true;
   const first = words[0];
-  if (first >= 0xfe80 && first <= 0xfebf) return true;
+  if (first >= 0xfe80 && first <= 0xfeff) return true; // link-local + deprecated site-local fec0::/10
+  if (first === 0x2001 && words[1] === 0) return true; // Teredo 2001::/32 tunnels to arbitrary IPv4
+  if (first === 0x0100 && words.slice(1, 4).every((word) => word === 0)) return true; // discard 100::/64
   if (first >= 0xfc00 && first <= 0xfdff) return true;
   return (first & 0xff00) === 0xff00;
 }
