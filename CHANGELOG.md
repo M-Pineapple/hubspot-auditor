@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.4] - 2026-10-15
+
 ### Security
 
 - Site checks block a few more non-public address forms, and the PDF report writer refuses to follow symbolic links in the reports folder. Details are in a private advisory. Please update once released.
