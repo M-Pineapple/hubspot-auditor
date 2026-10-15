@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { existsSync, linkSync, mkdtempSync, readFileSync, realpathSync, symlinkSync, unlinkSync, writeFileSync } from "node:fs";
+import { existsSync, linkSync, mkdirSync, mkdtempSync, renameSync, readFileSync, realpathSync, symlinkSync, unlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
@@ -95,5 +95,35 @@ test("writeReportFile creates new files exclusively and overwrites only when all
   withReportDir(dir, true, () => {
     const t = mod.writeReportFile("a.pdf", "2");
     assert.equal(readFileSync(t, "utf8"), "2");
+  });
+});
+
+test("a parent-folder swap (rename real, symlink outside in its place) is refused", async () => {
+  const mod = await import("../src/report-file.ts");
+  const base = mkdtempSync(join(tmpdir(), "hsr-swap-"));
+  const real = join(base, "real");
+  const outside = mkdtempSync(join(tmpdir(), "hso-swap-"));
+  mkdirSync(real);
+  withReportDir(real, false, () => {
+    mod.writeReportFile("first.pdf", "ok"); // first use pins the folder
+    renameSync(real, `${real}.bak`);
+    symlinkSync(outside, real);
+    assert.throws(() => mod.writeReportFile("second.pdf", "PWNED"), /changed|symlink/);
+    assert.equal(existsSync(join(outside, "second.pdf")), false);
+  });
+});
+
+test("the pinned folder must not be swapped between resolve and open", async () => {
+  const mod = await import("../src/report-file.ts");
+  const base = mkdtempSync(join(tmpdir(), "hsr-swap2-"));
+  const real = join(base, "real");
+  const outside = mkdtempSync(join(tmpdir(), "hso-swap2-"));
+  mkdirSync(real);
+  withReportDir(real, false, () => {
+    const target = mod.resolveReportFile("late.pdf");
+    renameSync(real, `${real}.bak`);
+    symlinkSync(outside, real);
+    assert.throws(() => mod.openReportFileForWrite(target), /changed|symlink|inside/);
+    assert.equal(existsSync(join(outside, "late.pdf")), false);
   });
 });
