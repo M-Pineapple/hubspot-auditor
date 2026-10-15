@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- GitHub Actions workflow to publish `v*` tags to npm with Trusted Publishing (OIDC) and to the MCP Registry.
+
 ## [1.4.4] - 2026-10-15
 
 ### Security
