@@ -13,6 +13,13 @@ import { basename, join, resolve, sep } from "node:path";
 
 type Identity = { path: string; dev: number; ino: number };
 
+/** Test-only hooks to reproduce races at exact points. Never set in production. */
+export const reportFileTestHooks: {
+  afterUnlink?: () => void;
+  beforeOpen?: () => void;
+  afterOpen?: () => void;
+} = {};
+
 /** Every component from "/" to the report directory, pinned at first use. */
 const pinnedChains = new Map<string, Identity[]>();
 
@@ -114,9 +121,13 @@ export function openReportFileForWrite(target: string): number {
       if (existing.nlink > 1) throw new Error("pdfPath must not be a hard link.");
       verifyChain(chain);
       unlinkSync(target);
+      reportFileTestHooks.afterUnlink?.();
     }
   }
 
+  // Re-check the whole folder path right before the open (also after unlink).
+  verifyChain(chain);
+  reportFileTestHooks.beforeOpen?.();
   let fd: number;
   try {
     fd = openSync(target, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW, 0o644);
@@ -128,20 +139,41 @@ export function openReportFileForWrite(target: string): number {
     }
     throw error;
   }
+  let st: ReturnType<typeof fstatSync> | undefined;
   try {
-    const st = fstatSync(fd);
+    reportFileTestHooks.afterOpen?.();
+    st = fstatSync(fd);
     if (!st.isFile()) throw new Error("pdfPath must be a regular file.");
     if (st.nlink > 1) throw new Error("pdfPath must not be a hard link.");
+    // Containment: verifyChain lstats the pinned folder path itself (and every
+    // parent) and requires the dev/ino recorded at first use, so the folder we
+    // just created the file in is still the pinned one. The file must also be
+    // on that folder's device and be what dir/name names right now.
     verifyChain(chain);
     if (st.dev !== dir.dev) throw new Error("pdfPath is not inside the report folder.");
-    const named = lstatSync(target);
+    const named = lstatSync(join(dir.path, basename(target)));
     if (named.isSymbolicLink() || named.ino !== st.ino || named.dev !== st.dev) {
       throw new Error("pdfPath changed while it was being opened.");
     }
     return fd;
   } catch (error) {
     closeSync(fd);
-    throw error;
+    // We created this file with O_EXCL; remove it only if the name still
+    // points at exactly what we opened. Otherwise leave it and say so.
+    let removed = false;
+    if (st) {
+      try {
+        const now = lstatSync(target);
+        if (!now.isSymbolicLink() && now.dev === st.dev && now.ino === st.ino) {
+          unlinkSync(target);
+          removed = true;
+        }
+      } catch {
+        removed = false;
+      }
+    }
+    const message = (error as Error).message;
+    throw new Error(removed ? message : `${message} The partially created file was left in place at ${target}; check it.`);
   }
 }
 

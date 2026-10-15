@@ -127,3 +127,69 @@ test("the pinned folder must not be swapped between resolve and open", async () 
     assert.equal(existsSync(join(outside, "late.pdf")), false);
   });
 });
+
+function swapParent(real: string, outside: string) {
+  renameSync(real, `${real}.bak`);
+  symlinkSync(outside, real);
+}
+
+test("a parent swap between unlink and open is refused (pre-open check)", async () => {
+  const mod = await import("../src/report-file.ts");
+  const base = mkdtempSync(join(tmpdir(), "hsr-ul-"));
+  const real = join(base, "real");
+  const outside = mkdtempSync(join(tmpdir(), "hso-ul-"));
+  mkdirSync(real);
+  withReportDir(real, true, () => {
+    mod.writeReportFile("a.pdf", "first");
+    let opened = false;
+    mod.reportFileTestHooks.afterUnlink = () => swapParent(real, outside);
+    mod.reportFileTestHooks.afterOpen = () => { opened = true; };
+    try {
+      assert.throws(() => mod.writeReportFile("a.pdf", "PWNED"), /changed|symlink/);
+    } finally {
+      mod.reportFileTestHooks.afterUnlink = undefined;
+      mod.reportFileTestHooks.afterOpen = undefined;
+    }
+    assert.equal(opened, false, "nothing may be opened through a swapped parent");
+    assert.equal(existsSync(join(outside, "a.pdf")), false);
+  });
+});
+
+test("a parent swap right before open is caught after open and the stray file removed", async () => {
+  const mod = await import("../src/report-file.ts");
+  const base = mkdtempSync(join(tmpdir(), "hsr-bo-"));
+  const real = join(base, "real");
+  const outside = mkdtempSync(join(tmpdir(), "hso-bo-"));
+  mkdirSync(real);
+  withReportDir(real, true, () => {
+    mod.writeReportFile("b.pdf", "first");
+    mod.reportFileTestHooks.beforeOpen = () => swapParent(real, outside);
+    try {
+      assert.throws(() => mod.writeReportFile("b.pdf", "PWNED"), /changed|inside/);
+    } finally {
+      mod.reportFileTestHooks.beforeOpen = undefined;
+    }
+    const stray = join(outside, "b.pdf");
+    assert.ok(!existsSync(stray) || readFileSync(stray, "utf8") === "", "no report content outside");
+    assert.equal(existsSync(stray), false, "the file created outside was removed");
+  });
+});
+
+test("a file swapped under the name right after open is refused and left in place", async () => {
+  const mod = await import("../src/report-file.ts");
+  const dir = mkdtempSync(join(tmpdir(), "hsr-name-"));
+  withReportDir(dir, false, () => {
+    const target = join(realpathSync(dir), "c.pdf");
+    mod.reportFileTestHooks.afterOpen = () => {
+      renameSync(target, `${target}.moved`);
+      writeFileSync(target, "someone else");
+    };
+    try {
+      assert.throws(() => mod.writeReportFile("c.pdf", "REPORT"), /changed/);
+    } finally {
+      mod.reportFileTestHooks.afterOpen = undefined;
+    }
+    assert.equal(readFileSync(target, "utf8"), "someone else");
+    assert.equal(readFileSync(`${target}.moved`, "utf8"), "");
+  });
+});
