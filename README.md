@@ -9,6 +9,7 @@
 [![CI](https://github.com/M-Pineapple/hubspot-auditor/actions/workflows/ci.yml/badge.svg)](https://github.com/M-Pineapple/hubspot-auditor/actions/workflows/ci.yml)
 [![Node.js 22+](https://img.shields.io/badge/node-22%2B-brightgreen.svg)](https://nodejs.org)
 [![Listed on mcpservers.org](https://mcpservers.org/badge.svg)](https://mcpservers.org/servers/m-pineapple/hubspot-auditor)
+[![M-Pineapple/hubspot-auditor MCP server](https://glama.ai/mcp/servers/M-Pineapple/hubspot-auditor/badges/score.svg)](https://glama.ai/mcp/servers/M-Pineapple/hubspot-auditor)
 
 Read-only audit of a HubSpot portal. You get a scored report of what works, what is broken, and what is missing, plus a 30/60/90-day fix plan.
 
