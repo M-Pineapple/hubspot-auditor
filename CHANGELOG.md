@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- The publish workflow retries the MCP Registry step so a new npm version can appear, and can publish the registry entry alone when the package is already on npm.
+
 ## [1.4.5] - 2026-10-15
 
 ### Added
