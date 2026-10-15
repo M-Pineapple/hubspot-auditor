@@ -1,7 +1,7 @@
 {
   "manifest_version": "0.2",
   "name": "hubspot-auditor",
-  "version": "1.4.4",
+  "version": "1.4.5",
   "description": "Read-only MCP server that audits a HubSpot portal: what works, what is broken, what is missing.",
   "author": {
     "name": "M-Pineapple"

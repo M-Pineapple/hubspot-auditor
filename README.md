@@ -15,6 +15,8 @@ Read-only audit of a HubSpot portal. You get a scored report of what works, what
 
 The server speaks MCP over stdio. A CLI runs the same audit. It never sends POST, PUT, PATCH, or DELETE to HubSpot.
 
+What's new in v1.4.5: tagged releases publish to npm with GitHub Trusted Publishing. See [CHANGELOG.md](CHANGELOG.md).
+
 What's new in v1.4.4: site checks block more non-public addresses, and PDF reports stay inside the reports folder. Please update. See [CHANGELOG.md](CHANGELOG.md).
 
 What's new in v1.4.2: registry metadata for the official MCP Registry and Smithery. See [CHANGELOG.md](CHANGELOG.md).
