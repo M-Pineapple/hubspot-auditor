@@ -55,6 +55,7 @@ function withReportDir<T>(dir: string, overwrite: boolean, fn: () => T): T {
 
 test("a symlink planted after the check is not followed at write time", async () => {
   const mod = await import("../src/report-file.ts");
+  assert.equal(typeof mod.openReportFileForWrite, "function");
   const dir = mkdtempSync(join(tmpdir(), "hsr-race-"));
   const outside = join(mkdtempSync(join(tmpdir(), "hso-race-")), "x.pdf");
   for (const overwrite of [false, true]) {
@@ -62,7 +63,7 @@ test("a symlink planted after the check is not followed at write time", async ()
       const target = mod.resolveReportFile("race.pdf");
       symlinkSync(outside, target); // attacker wins the race
       try {
-        assert.throws(() => mod.openReportFileForWrite(target));
+        assert.throws(() => mod.openReportFileForWrite(target), /symlink|overwrite|changed/);
         assert.equal(existsSync(outside), false);
       } finally {
         unlinkSync(target);
