@@ -1,14 +1,27 @@
-export type Status = "working" | "broken" | "missing";
+export type Status = "working" | "broken" | "missing" | "needs_operator_confirmation";
 export type Severity = "critical" | "high" | "medium" | "low";
+
+export type BusinessProcess =
+  | "territory assignment"
+  | "billing"
+  | "lead routing"
+  | "consent"
+  | "deliverability"
+  | "conversion"
+  | "reporting"
+  | "data hygiene";
 
 export interface Finding {
   id: string;
   auditor: string;
   status: Status;
   severity: Severity;
+  process: BusinessProcess;
   title: string;
   evidence: string;
   recommendedFix: string;
+  ownerRole: string;
+  retest: string;
 }
 
 export interface CheckRule {

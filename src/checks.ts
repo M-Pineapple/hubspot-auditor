@@ -1,3 +1,4 @@
+import { applyPropertyImpact, checkMeta, CONFIRM_NOTE, namesByImpact } from "./impact.ts";
 import type { CheckRule, Finding, PortalSnapshot, Severity, Status } from "./types.ts";
 
 export interface CheckContext {
@@ -14,14 +15,28 @@ function finding(
   recommendedFix: string,
   severity?: Severity,
 ): Finding {
+  const meta = checkMeta[rule.id] ?? {
+    process: "data hygiene" as const,
+    ownerRole: "RevOps",
+    retest: "Rerun the audit after the change and confirm this check is working.",
+  };
+  let resolved = status;
+  let resolvedEvidence = evidence;
+  if (resolved === "working" && meta.confirmPass === true && rule.params.operatorConfirmed !== true) {
+    resolved = "needs_operator_confirmation";
+    resolvedEvidence = `${evidence}${CONFIRM_NOTE}`;
+  }
   return {
     id: rule.id,
     auditor: rule.auditor,
-    status,
+    status: resolved,
     severity: severity ?? rule.severity,
+    process: meta.process,
     title: rule.title,
-    evidence,
+    evidence: resolvedEvidence,
     recommendedFix,
+    ownerRole: meta.ownerRole,
+    retest: meta.retest,
   };
 }
 
@@ -143,11 +158,15 @@ export const checks: Record<string, CheckFn> = {
     if (thin.length === 0) {
       return finding(rule, "working", "Required properties are filled on at least 90% of records.", "Keep required fields on create forms.");
     }
-    return finding(
-      rule,
-      "broken",
-      `${thin.length} required property name(s) are below the fill ratio: ${portalNameList(thin.map((item) => item.name))}.`,
-      "Make the thin properties required on the create forms and backfill the blanks.",
+    const ordered = namesByImpact(thin.map((item) => item.name));
+    return applyPropertyImpact(
+      finding(
+        rule,
+        "broken",
+        `${thin.length} required property name(s) are below the fill ratio: ${portalNameList(ordered)}.`,
+        "Make the thin properties required on the create forms and backfill the blanks.",
+      ),
+      ordered,
     );
   },
 
@@ -160,11 +179,15 @@ export const checks: Record<string, CheckFn> = {
     if (unused.length === 0) {
       return finding(rule, "working", "Every custom property in the sample has at least one value.", "Review new properties after 30 days.");
     }
-    return finding(
-      rule,
-      "missing",
-      `${unused.length} custom property name(s) have no values: ${portalNameList(unused.map((item) => item.name))}.`,
-      "Archive unused properties or start collecting them on a form.",
+    const ordered = namesByImpact(unused.map((item) => item.name));
+    return applyPropertyImpact(
+      finding(
+        rule,
+        "missing",
+        `${unused.length} custom property name(s) have no values: ${portalNameList(ordered)}.`,
+        "Archive unused properties or start collecting them on a form.",
+      ),
+      ordered,
     );
   },
 
@@ -246,17 +269,27 @@ export const checks: Record<string, CheckFn> = {
         "HubSpot did not return those rules on the pipeline payload, so this audit cannot score them.",
       );
     }
-    const bare = deals.filter((pipeline) =>
-      pipeline.objectType === "deals" && pipeline.stages.some((stage) => expected.some((name) => !stage.requiredProperties.includes(name))),
-    );
+    const missingNames: string[] = [];
+    for (const pipeline of deals) {
+      for (const stage of pipeline.stages) {
+        for (const name of expected) {
+          if (!stage.requiredProperties.includes(name) && !missingNames.includes(name)) missingNames.push(name);
+        }
+      }
+    }
+    const ordered = namesByImpact(missingNames);
+    const bare = deals.filter((pipeline) => pipeline.stages.some((stage) => expected.some((name) => !stage.requiredProperties.includes(name))));
     if (bare.length === 0) {
       return finding(rule, "working", "Every stage requires the configured fields.", "Keep the required list in this YAML file.");
     }
-    return finding(
-      rule,
-      "missing",
-      `${bare.length} pipeline(s) have a stage that does not require the configured fields.`,
-      "Mark those properties required before a record can enter the stage.",
+    return applyPropertyImpact(
+      finding(
+        rule,
+        "missing",
+        `${bare.length} pipeline(s) have a stage that does not require the configured fields: ${portalNameList(ordered)}.`,
+        "Mark those properties required before a record can enter the stage.",
+      ),
+      ordered,
     );
   },
 

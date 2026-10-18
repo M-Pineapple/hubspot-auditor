@@ -6,470 +6,865 @@
   "counts": {
     "working": 14,
     "broken": 21,
-    "missing": 11
+    "missing": 11,
+    "needs_operator_confirmation": 0
   },
   "findings": [
     {
-      "id": "email.sender-authentication",
-      "auditor": "email",
-      "status": "broken",
+      "id": "pipelines.required-fields",
+      "auditor": "pipelines",
+      "status": "missing",
       "severity": "critical",
-      "title": "Sender domain authentication",
-      "evidence": "1 sender domain(s) are missing a pass on SPF, DKIM, or DMARC.",
-      "recommendedFix": "Publish the missing DNS records before the next campaign."
-    },
-    {
-      "id": "forms.gdpr-consent",
-      "auditor": "forms",
-      "status": "broken",
-      "severity": "critical",
-      "title": "GDPR consent on forms",
-      "evidence": "1 live form(s) have no GDPR consent field.",
-      "recommendedFix": "Add a consent checkbox and store the lawful basis."
-    },
-    {
-      "id": "tracking.install-code",
-      "auditor": "tracking",
-      "status": "broken",
-      "severity": "critical",
-      "title": "Tracking code on the public site",
-      "evidence": "The public page HTML does not include the HubSpot tracking script.",
-      "recommendedFix": "Add the portal tracking code to the site layout."
-    },
-    {
-      "id": "brand.logo",
-      "auditor": "brand",
-      "status": "working",
-      "severity": "high",
-      "title": "Logo on landing pages",
-      "evidence": "Published pages include a logo image or SVG.",
-      "recommendedFix": "Put the logo in the shared page header."
-    },
-    {
-      "id": "brand.page-cta",
-      "auditor": "brand",
-      "status": "working",
-      "severity": "high",
-      "title": "Landing page call to action",
-      "evidence": "Published landing pages include a call to action.",
-      "recommendedFix": "Point the action at one form or one meeting link."
-    },
-    {
-      "id": "brand.page-tracking",
-      "auditor": "brand",
-      "status": "broken",
-      "severity": "high",
-      "title": "Tracking on landing pages",
-      "evidence": "1 published landing page(s) have no tracking script.",
-      "recommendedFix": "Add the portal tracking code to the landing page template."
-    },
-    {
-      "id": "brand.published-pages",
-      "auditor": "brand",
-      "status": "working",
-      "severity": "high",
-      "title": "Published landing pages",
-      "evidence": "1 landing page(s) are published.",
-      "recommendedFix": "Keep a draft only while it is still being edited."
-    },
-    {
-      "id": "crm.duplicate-companies",
-      "auditor": "crm",
-      "status": "broken",
-      "severity": "high",
-      "title": "Duplicate companies",
-      "evidence": "1 domain(s) are shared by more than one company.",
-      "recommendedFix": "Merge companies that share a domain."
-    },
-    {
-      "id": "crm.duplicate-contacts",
-      "auditor": "crm",
-      "status": "broken",
-      "severity": "high",
-      "title": "Duplicate contacts",
-      "evidence": "1 email address(es) are shared by more than one contact.",
-      "recommendedFix": "Merge the duplicate contacts and turn on a create-time duplicate rule."
+      "process": "billing",
+      "title": "Required fields per stage",
+      "evidence": "1 pipeline(s) have a stage that does not require the configured fields: amount.",
+      "recommendedFix": "Mark those properties required before a record can enter the stage.",
+      "ownerRole": "Sales ops",
+      "retest": "Move a test deal into the stage with the field blank and confirm HubSpot blocks the move."
     },
     {
       "id": "crm.missing-required-properties",
       "auditor": "crm",
       "status": "broken",
       "severity": "high",
+      "process": "lead routing",
       "title": "Required properties filled",
       "evidence": "1 required property name(s) are below the fill ratio: email.",
-      "recommendedFix": "Make the thin properties required on the create forms and backfill the blanks."
-    },
-    {
-      "id": "email.subscription-coverage",
-      "auditor": "email",
-      "status": "working",
-      "severity": "high",
-      "title": "Subscription type on published emails",
-      "evidence": "Published emails are tied to a subscription type.",
-      "recommendedFix": "Keep one subscription type per email."
+      "recommendedFix": "Make the thin properties required on the create forms and backfill the blanks.",
+      "ownerRole": "RevOps",
+      "retest": "Agree which fields are required, backfill any field still under the ratio, and rerun the audit."
     },
     {
       "id": "email.workflows-health",
       "auditor": "email",
       "status": "broken",
       "severity": "high",
+      "process": "lead routing",
       "title": "Workflow health",
       "evidence": "1 workflow(s) are in error. 1 active workflow(s) have no enrolment.",
-      "recommendedFix": "Open the errored workflows and fix the failing action."
+      "recommendedFix": "Open the errored workflows and fix the failing action.",
+      "ownerRole": "RevOps",
+      "retest": "Open each errored workflow, fix the failing action, and confirm a new test contact enrols."
     },
     {
       "id": "forms.field-mapping",
       "auditor": "forms",
       "status": "broken",
       "severity": "high",
+      "process": "lead routing",
       "title": "Form field mapping",
       "evidence": "1 form field(s) have no property mapping.",
-      "recommendedFix": "Map each field to a contact or company property."
-    },
-    {
-      "id": "forms.live-forms",
-      "auditor": "forms",
-      "status": "working",
-      "severity": "high",
-      "title": "Live forms",
-      "evidence": "2 form(s) are not archived.",
-      "recommendedFix": "Archive forms that no page still embeds."
-    },
-    {
-      "id": "forms.spam-protection",
-      "auditor": "forms",
-      "status": "broken",
-      "severity": "high",
-      "title": "Spam protection",
-      "evidence": "1 live form(s) have no spam protection.",
-      "recommendedFix": "Turn on CAPTCHA or another spam control."
+      "recommendedFix": "Map each field to a contact or company property.",
+      "ownerRole": "Marketing ops",
+      "retest": "Submit the form once and confirm each answer lands on the intended contact property."
     },
     {
       "id": "integrations.sync-errors",
       "auditor": "integrations",
       "status": "broken",
       "severity": "high",
+      "process": "lead routing",
       "title": "Sync errors",
       "evidence": "1 app(s) and 1 webhook(s) report sync errors.",
-      "recommendedFix": "Open the failing sync and replay or pause it."
+      "recommendedFix": "Open the failing sync and replay or pause it.",
+      "ownerRole": "Integration owner",
+      "retest": "Find the integration that created the bad row, correct that route, and rerun a ten-row import."
     },
     {
       "id": "journey.stage-hooks",
       "auditor": "journey",
       "status": "broken",
       "severity": "high",
+      "process": "lead routing",
       "title": "Email hooks by buyer stage",
-      "evidence": "6 journey stage(s) have no matching published email: lead, marketingqualifiedlead, salesqualifiedlead, opportunity, customer, evangelist.",
-      "recommendedFix": "Add one email or workflow for each uncovered stage."
+      "evidence": "6 journey stage(s) have no matching published email: lead, marketingqualifiedlead, salesqualifiedlead, opportunity, customer and 1 more.",
+      "recommendedFix": "Add one email or workflow for each uncovered stage.",
+      "ownerRole": "Marketing ops",
+      "retest": "Move one test contact into each uncovered stage and confirm the matching email or workflow exists."
     },
     {
       "id": "pipelines.stale-deals",
       "auditor": "pipelines",
       "status": "broken",
       "severity": "high",
+      "process": "lead routing",
       "title": "Stale deals",
       "evidence": "1 sampled deal(s) have not been updated for 30 days or more.",
-      "recommendedFix": "Create a workflow that tasks the owner when a deal goes stale."
-    },
-    {
-      "id": "program.subscription-types",
-      "auditor": "program",
-      "status": "working",
-      "severity": "high",
-      "title": "Email subscription types",
-      "evidence": "1 subscription type(s) are defined.",
-      "recommendedFix": "Map each marketing email to one subscription type."
-    },
-    {
-      "id": "reporting.lifecycle-funnel",
-      "auditor": "reporting",
-      "status": "working",
-      "severity": "high",
-      "title": "Lifecycle funnel",
-      "evidence": "The contact sample spans 4 lifecycle stages.",
-      "recommendedFix": "Use the same stage names on the funnel report."
-    },
-    {
-      "id": "tracking.cookie-banner",
-      "auditor": "tracking",
-      "status": "broken",
-      "severity": "high",
-      "title": "Cookie banner",
-      "evidence": "The public page does not show a known cookie-banner marker.",
-      "recommendedFix": "Add a consent banner before non-essential HubSpot cookies load."
-    },
-    {
-      "id": "tracking.original-source",
-      "auditor": "tracking",
-      "status": "broken",
-      "severity": "high",
-      "title": "Original source attribution",
-      "evidence": "Original source is missing on too many sampled contacts.",
-      "recommendedFix": "Stop blank imports from clearing original source."
-    },
-    {
-      "id": "brand.colours",
-      "auditor": "brand",
-      "status": "working",
-      "severity": "medium",
-      "title": "Landing page colour palette",
-      "evidence": "Published pages use a stylesheet or a small colour set.",
-      "recommendedFix": "Keep new pages on that palette."
-    },
-    {
-      "id": "brand.favicon",
-      "auditor": "brand",
-      "status": "broken",
-      "severity": "medium",
-      "title": "Favicon on landing pages",
-      "evidence": "1 published page(s) have no favicon.",
-      "recommendedFix": "Add a rel=icon link in the page head."
-    },
-    {
-      "id": "brand.heading",
-      "auditor": "brand",
-      "status": "working",
-      "severity": "medium",
-      "title": "Page heading",
-      "evidence": "Published pages include a level-one heading.",
-      "recommendedFix": "Give each landing page one h1."
-    },
-    {
-      "id": "brand.page-meta",
-      "auditor": "brand",
-      "status": "broken",
-      "severity": "medium",
-      "title": "Landing page titles and descriptions",
-      "evidence": "1 published landing page(s) are missing a title or meta description.",
-      "recommendedFix": "Fill the HTML title and meta description before the next campaign."
+      "recommendedFix": "Create a workflow that tasks the owner when a deal goes stale.",
+      "ownerRole": "Sales ops",
+      "retest": "Agree the stale-day threshold, let the task workflow fire on one quiet deal, and rerun the audit."
     },
     {
       "id": "crm.lifecycle-lead-status",
       "auditor": "crm",
       "status": "broken",
       "severity": "medium",
+      "process": "lead routing",
       "title": "Lifecycle and lead status",
       "evidence": "1 contact(s) use a conflicting lifecycle stage and lead status.",
-      "recommendedFix": "Clear the conflicting lead status when lifecycle stage changes."
+      "recommendedFix": "Clear the conflicting lead status when lifecycle stage changes.",
+      "ownerRole": "Sales ops",
+      "retest": "Agree the allowed lifecycle and lead-status pairs, clear any conflicting row, and rerun the audit."
     },
     {
       "id": "email.nurture-sequence",
       "auditor": "email",
       "status": "missing",
       "severity": "medium",
+      "process": "lead routing",
       "title": "Nurture sequence",
       "evidence": "No active nurture sequence was found.",
-      "recommendedFix": "Add one short nurture for new leads."
-    },
-    {
-      "id": "email.unengaged-handling",
-      "auditor": "email",
-      "status": "missing",
-      "severity": "medium",
-      "title": "Unengaged contacts",
-      "evidence": "No workflow handles unengaged contacts.",
-      "recommendedFix": "Add a sunset workflow after a set number of unopened emails."
-    },
-    {
-      "id": "forms.follow-up-email",
-      "auditor": "forms",
-      "status": "missing",
-      "severity": "medium",
-      "title": "Follow-up email",
-      "evidence": "1 embedded form(s) have no follow-up email.",
-      "recommendedFix": "Add a follow-up email or a workflow enrolment on submit."
+      "recommendedFix": "Add one short nurture for new leads.",
+      "ownerRole": "Marketing ops",
+      "retest": "Enrol one new lead and confirm the nurture sends, then stops when the contact becomes a customer."
     },
     {
       "id": "integrations.webhook-subscriptions",
       "auditor": "integrations",
       "status": "broken",
       "severity": "medium",
+      "process": "lead routing",
       "title": "Webhook subscriptions",
       "evidence": "1 webhook subscription(s) are inactive.",
-      "recommendedFix": "Repair or remove the inactive subscription."
-    },
-    {
-      "id": "pipelines.required-fields",
-      "auditor": "pipelines",
-      "status": "missing",
-      "severity": "medium",
-      "title": "Required fields per stage",
-      "evidence": "1 pipeline(s) have a stage that does not require the configured fields.",
-      "recommendedFix": "Mark those properties required before a record can enter the stage."
+      "recommendedFix": "Repair or remove the inactive subscription.",
+      "ownerRole": "Integration owner",
+      "retest": "Send one test event and confirm the subscription receives it."
     },
     {
       "id": "pipelines.stage-automation",
       "auditor": "pipelines",
       "status": "missing",
       "severity": "medium",
+      "process": "lead routing",
       "title": "Automation on stage change",
       "evidence": "1 pipeline(s) have no stage-change automation.",
-      "recommendedFix": "Add a workflow or stage action for the first handoff stage."
-    },
-    {
-      "id": "pipelines.stage-probabilities",
-      "auditor": "pipelines",
-      "status": "broken",
-      "severity": "medium",
-      "title": "Deal stage probabilities",
-      "evidence": "1 later deal stage(s) are below 40% probability.",
-      "recommendedFix": "Set a realistic probability on each open stage."
-    },
-    {
-      "id": "program.campaigns",
-      "auditor": "program",
-      "status": "broken",
-      "severity": "medium",
-      "title": "Campaign links on live assets",
-      "evidence": "2 published page or email asset(s) have no campaign.",
-      "recommendedFix": "Attach each live asset to a campaign."
+      "recommendedFix": "Add a workflow or stage action for the first handoff stage.",
+      "ownerRole": "RevOps",
+      "retest": "Move one test deal into the handoff stage and confirm the workflow enrols that deal."
     },
     {
       "id": "program.dynamic-lists",
       "auditor": "program",
       "status": "missing",
       "severity": "medium",
+      "process": "lead routing",
       "title": "Dynamic lists",
       "evidence": "No dynamic list was returned.",
-      "recommendedFix": "Build dynamic lists for the stages you email."
+      "recommendedFix": "Build dynamic lists for the stages you email.",
+      "ownerRole": "Marketing ops",
+      "retest": "Change one contact's lifecycle stage and confirm the dynamic list gains or loses that contact."
     },
     {
       "id": "program.lead-score",
       "auditor": "program",
       "status": "missing",
       "severity": "medium",
+      "process": "lead routing",
       "title": "Lead score",
       "evidence": "No lead-score property was returned.",
-      "recommendedFix": "Turn on predictive lead scoring or name your score property in the YAML."
+      "recommendedFix": "Turn on predictive lead scoring or name your score property in the YAML.",
+      "ownerRole": "RevOps",
+      "retest": "Open a scored contact and confirm the score property has a current value."
     },
     {
       "id": "program.owners",
       "auditor": "program",
       "status": "working",
       "severity": "medium",
+      "process": "lead routing",
       "title": "Record owners",
       "evidence": "1 owner record(s) are present.",
-      "recommendedFix": "Give every new contact and deal an owner."
+      "recommendedFix": "Give every new contact and deal an owner.",
+      "ownerRole": "RevOps",
+      "retest": "Create one test contact and confirm an owner is set before it is routed."
     },
     {
-      "id": "reporting.attribution",
-      "auditor": "reporting",
+      "id": "forms.gdpr-consent",
+      "auditor": "forms",
+      "status": "broken",
+      "severity": "critical",
+      "process": "consent",
+      "title": "GDPR consent on forms",
+      "evidence": "1 live form(s) have no GDPR consent field.",
+      "recommendedFix": "Add a consent checkbox and store the lawful basis.",
+      "ownerRole": "Marketing ops",
+      "retest": "Submit the form and confirm the contact stores the consent checkbox and the lawful basis."
+    },
+    {
+      "id": "tracking.cookie-banner",
+      "auditor": "tracking",
+      "status": "broken",
+      "severity": "high",
+      "process": "consent",
+      "title": "Cookie banner",
+      "evidence": "The public page does not show a known cookie-banner marker.",
+      "recommendedFix": "Add a consent banner before non-essential HubSpot cookies load.",
+      "ownerRole": "Marketing ops",
+      "retest": "Load the page in a fresh browser and confirm non-essential cookies wait for the banner."
+    },
+    {
+      "id": "email.sender-authentication",
+      "auditor": "email",
+      "status": "broken",
+      "severity": "critical",
+      "process": "deliverability",
+      "title": "Sender domain authentication",
+      "evidence": "1 sender domain(s) are missing a pass on SPF, DKIM, or DMARC.",
+      "recommendedFix": "Publish the missing DNS records before the next campaign.",
+      "ownerRole": "Marketing ops",
+      "retest": "Query the sender domain and confirm SPF, DKIM, and DMARC each return a pass."
+    },
+    {
+      "id": "email.subscription-coverage",
+      "auditor": "email",
+      "status": "working",
+      "severity": "high",
+      "process": "deliverability",
+      "title": "Subscription type on published emails",
+      "evidence": "Published emails are tied to a subscription type.",
+      "recommendedFix": "Keep one subscription type per email.",
+      "ownerRole": "Marketing ops",
+      "retest": "Open each published email and confirm it is tied to one subscription type before the next send."
+    },
+    {
+      "id": "program.subscription-types",
+      "auditor": "program",
+      "status": "working",
+      "severity": "high",
+      "process": "deliverability",
+      "title": "Email subscription types",
+      "evidence": "1 subscription type(s) are defined.",
+      "recommendedFix": "Map each marketing email to one subscription type.",
+      "ownerRole": "Marketing ops",
+      "retest": "Open the subscription settings and confirm each marketing email maps to one type."
+    },
+    {
+      "id": "email.unengaged-handling",
+      "auditor": "email",
       "status": "missing",
       "severity": "medium",
-      "title": "Attribution reports",
-      "evidence": "No attribution report was returned.",
-      "recommendedFix": "Add an attribution report for paid and organic channels."
+      "process": "deliverability",
+      "title": "Unengaged contacts",
+      "evidence": "No workflow handles unengaged contacts.",
+      "recommendedFix": "Add a sunset workflow after a set number of unopened emails.",
+      "ownerRole": "Marketing ops",
+      "retest": "Mark one test contact unengaged and confirm the sunset workflow suppresses further sends."
     },
     {
-      "id": "reporting.dashboards",
-      "auditor": "reporting",
+      "id": "brand.logo",
+      "auditor": "brand",
+      "status": "working",
+      "severity": "high",
+      "process": "conversion",
+      "title": "Logo on landing pages",
+      "evidence": "Published pages include a logo image or SVG.",
+      "recommendedFix": "Put the logo in the shared page header.",
+      "ownerRole": "Marketing ops",
+      "retest": "Open the landing page and confirm the shared logo is visible in the header."
+    },
+    {
+      "id": "brand.page-cta",
+      "auditor": "brand",
+      "status": "working",
+      "severity": "high",
+      "process": "conversion",
+      "title": "Landing page call to action",
+      "evidence": "Published landing pages include a call to action.",
+      "recommendedFix": "Point the action at one form or one meeting link.",
+      "ownerRole": "Marketing ops",
+      "retest": "Click the call to action and confirm it opens the intended form or meeting link."
+    },
+    {
+      "id": "brand.published-pages",
+      "auditor": "brand",
+      "status": "working",
+      "severity": "high",
+      "process": "conversion",
+      "title": "Published landing pages",
+      "evidence": "1 landing page(s) are published.",
+      "recommendedFix": "Keep a draft only while it is still being edited.",
+      "ownerRole": "Marketing ops",
+      "retest": "Open the primary campaign URL and confirm the published page loads."
+    },
+    {
+      "id": "forms.live-forms",
+      "auditor": "forms",
+      "status": "working",
+      "severity": "high",
+      "process": "conversion",
+      "title": "Live forms",
+      "evidence": "2 form(s) are not archived.",
+      "recommendedFix": "Archive forms that no page still embeds.",
+      "ownerRole": "Marketing ops",
+      "retest": "Load the primary page and confirm the live form is the one that should accept submissions."
+    },
+    {
+      "id": "forms.spam-protection",
+      "auditor": "forms",
+      "status": "broken",
+      "severity": "high",
+      "process": "conversion",
+      "title": "Spam protection",
+      "evidence": "1 live form(s) have no spam protection.",
+      "recommendedFix": "Turn on CAPTCHA or another spam control.",
+      "ownerRole": "Marketing ops",
+      "retest": "Submit the form once as a person and confirm a bot-style submission is blocked or dropped."
+    },
+    {
+      "id": "brand.colours",
+      "auditor": "brand",
       "status": "working",
       "severity": "medium",
-      "title": "Dashboards",
-      "evidence": "1 dashboard(s) are present.",
-      "recommendedFix": "Keep one operating dashboard for the revenue team."
+      "process": "conversion",
+      "title": "Landing page colour palette",
+      "evidence": "Published pages use a stylesheet or a small colour set.",
+      "recommendedFix": "Keep new pages on that palette.",
+      "ownerRole": "Marketing ops",
+      "retest": "Compare the page with the shared palette and confirm no extra colours were introduced."
     },
     {
-      "id": "tracking.utm-capture",
-      "auditor": "tracking",
+      "id": "brand.favicon",
+      "auditor": "brand",
+      "status": "broken",
+      "severity": "medium",
+      "process": "conversion",
+      "title": "Favicon on landing pages",
+      "evidence": "1 published page(s) have no favicon.",
+      "recommendedFix": "Add a rel=icon link in the page head.",
+      "ownerRole": "Marketing ops",
+      "retest": "Reload the page and confirm the browser tab shows the favicon."
+    },
+    {
+      "id": "brand.heading",
+      "auditor": "brand",
+      "status": "working",
+      "severity": "medium",
+      "process": "conversion",
+      "title": "Page heading",
+      "evidence": "Published pages include a level-one heading.",
+      "recommendedFix": "Give each landing page one h1.",
+      "ownerRole": "Marketing ops",
+      "retest": "Open the page and confirm it has one level-one heading."
+    },
+    {
+      "id": "brand.page-meta",
+      "auditor": "brand",
+      "status": "broken",
+      "severity": "medium",
+      "process": "conversion",
+      "title": "Landing page titles and descriptions",
+      "evidence": "1 published landing page(s) are missing a title or meta description.",
+      "recommendedFix": "Fill the HTML title and meta description before the next campaign.",
+      "ownerRole": "Marketing ops",
+      "retest": "View the page source and confirm the title and meta description match the offer."
+    },
+    {
+      "id": "forms.follow-up-email",
+      "auditor": "forms",
       "status": "missing",
       "severity": "medium",
-      "title": "UTM capture",
-      "evidence": "UTM properties exist but most sampled values are empty.",
-      "recommendedFix": "Pass UTM parameters into hidden form fields."
+      "process": "conversion",
+      "title": "Follow-up email",
+      "evidence": "1 embedded form(s) have no follow-up email.",
+      "recommendedFix": "Add a follow-up email or a workflow enrolment on submit.",
+      "ownerRole": "Marketing ops",
+      "retest": "Submit the embedded form from an inbox you control and confirm the follow-up arrives."
     },
     {
       "id": "brand.markers",
       "auditor": "brand",
       "status": "working",
       "severity": "low",
+      "process": "conversion",
       "title": "Extra brand phrases",
       "evidence": "No extra phrases are configured. Logo, favicon, heading, and colour checks still run.",
-      "recommendedFix": "Add params.markers only for words that must appear verbatim."
-    },
-    {
-      "id": "crm.unused-custom-properties",
-      "auditor": "crm",
-      "status": "missing",
-      "severity": "low",
-      "title": "Unused custom properties",
-      "evidence": "1 custom property name(s) have no values: favourite_glass.",
-      "recommendedFix": "Archive unused properties or start collecting them on a form."
+      "recommendedFix": "Add params.markers only for words that must appear verbatim.",
+      "ownerRole": "Marketing ops",
+      "retest": "Search the published HTML for each configured phrase and confirm it is present."
     },
     {
       "id": "forms.unused-forms",
       "auditor": "forms",
       "status": "missing",
       "severity": "low",
+      "process": "conversion",
       "title": "Unused forms",
       "evidence": "1 live form(s) are not embedded.",
-      "recommendedFix": "Embed the form or archive it."
+      "recommendedFix": "Embed the form or archive it.",
+      "ownerRole": "Marketing ops",
+      "retest": "Archive each unembedded form or place it on a page, then rerun the audit."
     },
     {
-      "id": "integrations.connected-apps",
-      "auditor": "integrations",
+      "id": "tracking.install-code",
+      "auditor": "tracking",
+      "status": "broken",
+      "severity": "critical",
+      "process": "reporting",
+      "title": "Tracking code on the public site",
+      "evidence": "The public page HTML does not include the HubSpot tracking script.",
+      "recommendedFix": "Add the portal tracking code to the site layout.",
+      "ownerRole": "Marketing ops",
+      "retest": "Load the public page and confirm the HubSpot tracking script request returns."
+    },
+    {
+      "id": "brand.page-tracking",
+      "auditor": "brand",
+      "status": "broken",
+      "severity": "high",
+      "process": "reporting",
+      "title": "Tracking on landing pages",
+      "evidence": "1 published landing page(s) have no tracking script.",
+      "recommendedFix": "Add the portal tracking code to the landing page template.",
+      "ownerRole": "Marketing ops",
+      "retest": "Load the landing page and confirm the tracking script request returns."
+    },
+    {
+      "id": "reporting.lifecycle-funnel",
+      "auditor": "reporting",
       "status": "working",
-      "severity": "low",
-      "title": "Connected apps",
-      "evidence": "1 app(s) are connected.",
-      "recommendedFix": "Remove apps you no longer use."
+      "severity": "high",
+      "process": "reporting",
+      "title": "Lifecycle funnel",
+      "evidence": "The contact sample spans 4 lifecycle stages.",
+      "recommendedFix": "Use the same stage names on the funnel report.",
+      "ownerRole": "RevOps",
+      "retest": "Compare the funnel stage names with the lifecycle property and confirm they match."
+    },
+    {
+      "id": "tracking.original-source",
+      "auditor": "tracking",
+      "status": "broken",
+      "severity": "high",
+      "process": "reporting",
+      "title": "Original source attribution",
+      "evidence": "Original source is missing on too many sampled contacts.",
+      "recommendedFix": "Stop blank imports from clearing original source.",
+      "ownerRole": "Marketing ops",
+      "retest": "Import one new contact and confirm the import does not clear original source."
+    },
+    {
+      "id": "pipelines.stage-probabilities",
+      "auditor": "pipelines",
+      "status": "broken",
+      "severity": "medium",
+      "process": "reporting",
+      "title": "Deal stage probabilities",
+      "evidence": "1 later deal stage(s) are below 40% probability.",
+      "recommendedFix": "Set a realistic probability on each open stage.",
+      "ownerRole": "Sales ops",
+      "retest": "Agree the probability floor, set it on each open stage, and rerun the audit."
+    },
+    {
+      "id": "program.campaigns",
+      "auditor": "program",
+      "status": "broken",
+      "severity": "medium",
+      "process": "reporting",
+      "title": "Campaign links on live assets",
+      "evidence": "2 published page or email asset(s) have no campaign.",
+      "recommendedFix": "Attach each live asset to a campaign.",
+      "ownerRole": "Marketing ops",
+      "retest": "Open each live asset and confirm it is attached to the campaign for that offer."
+    },
+    {
+      "id": "reporting.attribution",
+      "auditor": "reporting",
+      "status": "missing",
+      "severity": "medium",
+      "process": "reporting",
+      "title": "Attribution reports",
+      "evidence": "No attribution report was returned.",
+      "recommendedFix": "Add an attribution report for paid and organic channels.",
+      "ownerRole": "Marketing ops",
+      "retest": "Open the attribution report and confirm paid and organic channels both appear."
+    },
+    {
+      "id": "reporting.dashboards",
+      "auditor": "reporting",
+      "status": "working",
+      "severity": "medium",
+      "process": "reporting",
+      "title": "Dashboards",
+      "evidence": "1 dashboard(s) are present.",
+      "recommendedFix": "Keep one operating dashboard for the revenue team.",
+      "ownerRole": "RevOps",
+      "retest": "Open the operating dashboard and confirm pipeline and lifecycle both render."
+    },
+    {
+      "id": "tracking.utm-capture",
+      "auditor": "tracking",
+      "status": "missing",
+      "severity": "medium",
+      "process": "reporting",
+      "title": "UTM capture",
+      "evidence": "UTM properties exist but most sampled values are empty.",
+      "recommendedFix": "Pass UTM parameters into hidden form fields.",
+      "ownerRole": "Marketing ops",
+      "retest": "Open the form with utm_source set and confirm the hidden field stores that value."
     },
     {
       "id": "pipelines.ticket-pipeline",
       "auditor": "pipelines",
       "status": "working",
       "severity": "low",
+      "process": "reporting",
       "title": "Ticket pipeline",
       "evidence": "1 ticket pipeline(s) are defined.",
-      "recommendedFix": "Keep a closed stage and a required resolution field."
+      "recommendedFix": "Keep a closed stage and a required resolution field.",
+      "ownerRole": "Support lead",
+      "retest": "Open a test ticket, move it to closed, and confirm the pipeline still has a resolution field."
+    },
+    {
+      "id": "crm.duplicate-companies",
+      "auditor": "crm",
+      "status": "broken",
+      "severity": "high",
+      "process": "data hygiene",
+      "title": "Duplicate companies",
+      "evidence": "1 domain(s) are shared by more than one company.",
+      "recommendedFix": "Merge companies that share a domain.",
+      "ownerRole": "RevOps",
+      "retest": "Import two companies that share a domain and confirm they are blocked or merged."
+    },
+    {
+      "id": "crm.duplicate-contacts",
+      "auditor": "crm",
+      "status": "broken",
+      "severity": "high",
+      "process": "data hygiene",
+      "title": "Duplicate contacts",
+      "evidence": "1 email address(es) are shared by more than one contact.",
+      "recommendedFix": "Merge the duplicate contacts and turn on a create-time duplicate rule.",
+      "ownerRole": "RevOps",
+      "retest": "Import ten rows that repeat one email and confirm HubSpot does not create a second contact."
+    },
+    {
+      "id": "crm.unused-custom-properties",
+      "auditor": "crm",
+      "status": "missing",
+      "severity": "low",
+      "process": "data hygiene",
+      "title": "Unused custom properties",
+      "evidence": "1 custom property name(s) have no values: favourite_glass.",
+      "recommendedFix": "Archive unused properties or start collecting them on a form.",
+      "ownerRole": "RevOps",
+      "retest": "Archive each named property or place it on a form, then rerun and confirm the fill count is no longer zero."
+    },
+    {
+      "id": "integrations.connected-apps",
+      "auditor": "integrations",
+      "status": "working",
+      "severity": "low",
+      "process": "data hygiene",
+      "title": "Connected apps",
+      "evidence": "1 app(s) are connected.",
+      "recommendedFix": "Remove apps you no longer use.",
+      "ownerRole": "Integration owner",
+      "retest": "Disconnect any app you no longer use and confirm the remaining apps still sync."
     }
   ],
   "plan": [
     {
       "days": 30,
       "items": [
-        "critical: Sender domain authentication. Publish the missing DNS records before the next campaign.",
-        "critical: GDPR consent on forms. Add a consent checkbox and store the lawful basis.",
-        "critical: Tracking code on the public site. Add the portal tracking code to the site layout.",
-        "high: Tracking on landing pages. Add the portal tracking code to the landing page template.",
-        "high: Duplicate companies. Merge companies that share a domain.",
-        "high: Duplicate contacts. Merge the duplicate contacts and turn on a create-time duplicate rule.",
-        "high: Required properties filled. Make the thin properties required on the create forms and backfill the blanks.",
-        "high: Workflow health. Open the errored workflows and fix the failing action.",
-        "high: Form field mapping. Map each field to a contact or company property.",
-        "high: Spam protection. Turn on CAPTCHA or another spam control.",
-        "high: Sync errors. Open the failing sync and replay or pause it.",
-        "high: Email hooks by buyer stage. Add one email or workflow for each uncovered stage.",
-        "high: Stale deals. Create a workflow that tasks the owner when a deal goes stale.",
-        "high: Cookie banner. Add a consent banner before non-essential HubSpot cookies load.",
-        "high: Original source attribution. Stop blank imports from clearing original source."
+        {
+          "id": "crm.missing-required-properties",
+          "title": "Required properties filled",
+          "severity": "high",
+          "process": "lead routing",
+          "ownerRole": "RevOps",
+          "retest": "Agree which fields are required, backfill any field still under the ratio, and rerun the audit.",
+          "action": "Make the thin properties required on the create forms and backfill the blanks."
+        },
+        {
+          "id": "email.workflows-health",
+          "title": "Workflow health",
+          "severity": "high",
+          "process": "lead routing",
+          "ownerRole": "RevOps",
+          "retest": "Open each errored workflow, fix the failing action, and confirm a new test contact enrols.",
+          "action": "Open the errored workflows and fix the failing action."
+        },
+        {
+          "id": "forms.field-mapping",
+          "title": "Form field mapping",
+          "severity": "high",
+          "process": "lead routing",
+          "ownerRole": "Marketing ops",
+          "retest": "Submit the form once and confirm each answer lands on the intended contact property.",
+          "action": "Map each field to a contact or company property."
+        },
+        {
+          "id": "integrations.sync-errors",
+          "title": "Sync errors",
+          "severity": "high",
+          "process": "lead routing",
+          "ownerRole": "Integration owner",
+          "retest": "Find the integration that created the bad row, correct that route, and rerun a ten-row import.",
+          "action": "Open the failing sync and replay or pause it."
+        },
+        {
+          "id": "journey.stage-hooks",
+          "title": "Email hooks by buyer stage",
+          "severity": "high",
+          "process": "lead routing",
+          "ownerRole": "Marketing ops",
+          "retest": "Move one test contact into each uncovered stage and confirm the matching email or workflow exists.",
+          "action": "Add one email or workflow for each uncovered stage."
+        },
+        {
+          "id": "pipelines.stale-deals",
+          "title": "Stale deals",
+          "severity": "high",
+          "process": "lead routing",
+          "ownerRole": "Sales ops",
+          "retest": "Agree the stale-day threshold, let the task workflow fire on one quiet deal, and rerun the audit.",
+          "action": "Create a workflow that tasks the owner when a deal goes stale."
+        },
+        {
+          "id": "forms.gdpr-consent",
+          "title": "GDPR consent on forms",
+          "severity": "critical",
+          "process": "consent",
+          "ownerRole": "Marketing ops",
+          "retest": "Submit the form and confirm the contact stores the consent checkbox and the lawful basis.",
+          "action": "Add a consent checkbox and store the lawful basis."
+        },
+        {
+          "id": "tracking.cookie-banner",
+          "title": "Cookie banner",
+          "severity": "high",
+          "process": "consent",
+          "ownerRole": "Marketing ops",
+          "retest": "Load the page in a fresh browser and confirm non-essential cookies wait for the banner.",
+          "action": "Add a consent banner before non-essential HubSpot cookies load."
+        },
+        {
+          "id": "email.sender-authentication",
+          "title": "Sender domain authentication",
+          "severity": "critical",
+          "process": "deliverability",
+          "ownerRole": "Marketing ops",
+          "retest": "Query the sender domain and confirm SPF, DKIM, and DMARC each return a pass.",
+          "action": "Publish the missing DNS records before the next campaign."
+        },
+        {
+          "id": "forms.spam-protection",
+          "title": "Spam protection",
+          "severity": "high",
+          "process": "conversion",
+          "ownerRole": "Marketing ops",
+          "retest": "Submit the form once as a person and confirm a bot-style submission is blocked or dropped.",
+          "action": "Turn on CAPTCHA or another spam control."
+        },
+        {
+          "id": "tracking.install-code",
+          "title": "Tracking code on the public site",
+          "severity": "critical",
+          "process": "reporting",
+          "ownerRole": "Marketing ops",
+          "retest": "Load the public page and confirm the HubSpot tracking script request returns.",
+          "action": "Add the portal tracking code to the site layout."
+        },
+        {
+          "id": "brand.page-tracking",
+          "title": "Tracking on landing pages",
+          "severity": "high",
+          "process": "reporting",
+          "ownerRole": "Marketing ops",
+          "retest": "Load the landing page and confirm the tracking script request returns.",
+          "action": "Add the portal tracking code to the landing page template."
+        },
+        {
+          "id": "tracking.original-source",
+          "title": "Original source attribution",
+          "severity": "high",
+          "process": "reporting",
+          "ownerRole": "Marketing ops",
+          "retest": "Import one new contact and confirm the import does not clear original source.",
+          "action": "Stop blank imports from clearing original source."
+        },
+        {
+          "id": "crm.duplicate-companies",
+          "title": "Duplicate companies",
+          "severity": "high",
+          "process": "data hygiene",
+          "ownerRole": "RevOps",
+          "retest": "Import two companies that share a domain and confirm they are blocked or merged.",
+          "action": "Merge companies that share a domain."
+        },
+        {
+          "id": "crm.duplicate-contacts",
+          "title": "Duplicate contacts",
+          "severity": "high",
+          "process": "data hygiene",
+          "ownerRole": "RevOps",
+          "retest": "Import ten rows that repeat one email and confirm HubSpot does not create a second contact.",
+          "action": "Merge the duplicate contacts and turn on a create-time duplicate rule."
+        }
       ]
     },
     {
       "days": 60,
       "items": [
-        "medium: Favicon on landing pages. Add a rel=icon link in the page head.",
-        "medium: Landing page titles and descriptions. Fill the HTML title and meta description before the next campaign.",
-        "medium: Lifecycle and lead status. Clear the conflicting lead status when lifecycle stage changes.",
-        "medium: Webhook subscriptions. Repair or remove the inactive subscription.",
-        "medium: Deal stage probabilities. Set a realistic probability on each open stage.",
-        "medium: Campaign links on live assets. Attach each live asset to a campaign."
+        {
+          "id": "pipelines.required-fields",
+          "title": "Required fields per stage",
+          "severity": "critical",
+          "process": "billing",
+          "ownerRole": "Sales ops",
+          "retest": "Move a test deal into the stage with the field blank and confirm HubSpot blocks the move.",
+          "action": "Mark those properties required before a record can enter the stage."
+        },
+        {
+          "id": "crm.lifecycle-lead-status",
+          "title": "Lifecycle and lead status",
+          "severity": "medium",
+          "process": "lead routing",
+          "ownerRole": "Sales ops",
+          "retest": "Agree the allowed lifecycle and lead-status pairs, clear any conflicting row, and rerun the audit.",
+          "action": "Clear the conflicting lead status when lifecycle stage changes."
+        },
+        {
+          "id": "integrations.webhook-subscriptions",
+          "title": "Webhook subscriptions",
+          "severity": "medium",
+          "process": "lead routing",
+          "ownerRole": "Integration owner",
+          "retest": "Send one test event and confirm the subscription receives it.",
+          "action": "Repair or remove the inactive subscription."
+        },
+        {
+          "id": "brand.favicon",
+          "title": "Favicon on landing pages",
+          "severity": "medium",
+          "process": "conversion",
+          "ownerRole": "Marketing ops",
+          "retest": "Reload the page and confirm the browser tab shows the favicon.",
+          "action": "Add a rel=icon link in the page head."
+        },
+        {
+          "id": "brand.page-meta",
+          "title": "Landing page titles and descriptions",
+          "severity": "medium",
+          "process": "conversion",
+          "ownerRole": "Marketing ops",
+          "retest": "View the page source and confirm the title and meta description match the offer.",
+          "action": "Fill the HTML title and meta description before the next campaign."
+        },
+        {
+          "id": "pipelines.stage-probabilities",
+          "title": "Deal stage probabilities",
+          "severity": "medium",
+          "process": "reporting",
+          "ownerRole": "Sales ops",
+          "retest": "Agree the probability floor, set it on each open stage, and rerun the audit.",
+          "action": "Set a realistic probability on each open stage."
+        },
+        {
+          "id": "program.campaigns",
+          "title": "Campaign links on live assets",
+          "severity": "medium",
+          "process": "reporting",
+          "ownerRole": "Marketing ops",
+          "retest": "Open each live asset and confirm it is attached to the campaign for that offer.",
+          "action": "Attach each live asset to a campaign."
+        }
       ]
     },
     {
       "days": 90,
       "items": [
-        "medium: Nurture sequence. Add one short nurture for new leads.",
-        "medium: Unengaged contacts. Add a sunset workflow after a set number of unopened emails.",
-        "medium: Follow-up email. Add a follow-up email or a workflow enrolment on submit.",
-        "medium: Required fields per stage. Mark those properties required before a record can enter the stage.",
-        "medium: Automation on stage change. Add a workflow or stage action for the first handoff stage.",
-        "medium: Dynamic lists. Build dynamic lists for the stages you email.",
-        "medium: Lead score. Turn on predictive lead scoring or name your score property in the YAML.",
-        "medium: Attribution reports. Add an attribution report for paid and organic channels.",
-        "medium: UTM capture. Pass UTM parameters into hidden form fields.",
-        "low: Unused custom properties. Archive unused properties or start collecting them on a form.",
-        "low: Unused forms. Embed the form or archive it."
+        {
+          "id": "email.nurture-sequence",
+          "title": "Nurture sequence",
+          "severity": "medium",
+          "process": "lead routing",
+          "ownerRole": "Marketing ops",
+          "retest": "Enrol one new lead and confirm the nurture sends, then stops when the contact becomes a customer.",
+          "action": "Add one short nurture for new leads."
+        },
+        {
+          "id": "pipelines.stage-automation",
+          "title": "Automation on stage change",
+          "severity": "medium",
+          "process": "lead routing",
+          "ownerRole": "RevOps",
+          "retest": "Move one test deal into the handoff stage and confirm the workflow enrols that deal.",
+          "action": "Add a workflow or stage action for the first handoff stage."
+        },
+        {
+          "id": "program.dynamic-lists",
+          "title": "Dynamic lists",
+          "severity": "medium",
+          "process": "lead routing",
+          "ownerRole": "Marketing ops",
+          "retest": "Change one contact's lifecycle stage and confirm the dynamic list gains or loses that contact.",
+          "action": "Build dynamic lists for the stages you email."
+        },
+        {
+          "id": "program.lead-score",
+          "title": "Lead score",
+          "severity": "medium",
+          "process": "lead routing",
+          "ownerRole": "RevOps",
+          "retest": "Open a scored contact and confirm the score property has a current value.",
+          "action": "Turn on predictive lead scoring or name your score property in the YAML."
+        },
+        {
+          "id": "email.unengaged-handling",
+          "title": "Unengaged contacts",
+          "severity": "medium",
+          "process": "deliverability",
+          "ownerRole": "Marketing ops",
+          "retest": "Mark one test contact unengaged and confirm the sunset workflow suppresses further sends.",
+          "action": "Add a sunset workflow after a set number of unopened emails."
+        },
+        {
+          "id": "forms.follow-up-email",
+          "title": "Follow-up email",
+          "severity": "medium",
+          "process": "conversion",
+          "ownerRole": "Marketing ops",
+          "retest": "Submit the embedded form from an inbox you control and confirm the follow-up arrives.",
+          "action": "Add a follow-up email or a workflow enrolment on submit."
+        },
+        {
+          "id": "forms.unused-forms",
+          "title": "Unused forms",
+          "severity": "low",
+          "process": "conversion",
+          "ownerRole": "Marketing ops",
+          "retest": "Archive each unembedded form or place it on a page, then rerun the audit.",
+          "action": "Embed the form or archive it."
+        },
+        {
+          "id": "reporting.attribution",
+          "title": "Attribution reports",
+          "severity": "medium",
+          "process": "reporting",
+          "ownerRole": "Marketing ops",
+          "retest": "Open the attribution report and confirm paid and organic channels both appear.",
+          "action": "Add an attribution report for paid and organic channels."
+        },
+        {
+          "id": "tracking.utm-capture",
+          "title": "UTM capture",
+          "severity": "medium",
+          "process": "reporting",
+          "ownerRole": "Marketing ops",
+          "retest": "Open the form with utm_source set and confirm the hidden field stores that value.",
+          "action": "Pass UTM parameters into hidden form fields."
+        },
+        {
+          "id": "crm.unused-custom-properties",
+          "title": "Unused custom properties",
+          "severity": "low",
+          "process": "data hygiene",
+          "ownerRole": "RevOps",
+          "retest": "Archive each named property or place it on a form, then rerun and confirm the fill count is no longer zero.",
+          "action": "Archive unused properties or start collecting them on a form."
+        }
       ]
     }
   ]

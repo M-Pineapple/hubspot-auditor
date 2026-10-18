@@ -2,7 +2,7 @@
   "name": "hubspot-auditor",
   "version": "1.4.5",
   "mcpName": "io.github.M-Pineapple/hubspot-auditor",
-  "description": "Read-only MCP server that audits a HubSpot portal and reports what works, what is broken, and what is missing.",
+  "description": "Read-only MCP server that audits a HubSpot portal and reports what works, what is broken, what is missing, and what needs a person to confirm.",
   "type": "module",
   "license": "MIT",
   "author": "M-Pineapple",

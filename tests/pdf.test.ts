@@ -14,6 +14,9 @@ test("the demo report renders a multi-page PDF without contact addresses", async
   assert.match(decoded, /HubSpot Auditor/);
   assert.match(decoded, /Harbour Glass Co/);
   assert.match(decoded, /30\/60\/90-day plan/);
+  assert.match(decoded, /Needs operator confirmation/);
+  assert.match(decoded, /Owner:/);
+  assert.match(decoded, /Retest:/);
   assert.equal(raw.includes("harbourglass.example"), false);
   assert.equal(decoded.includes("harbourglass.example"), false);
   assert.ok((raw.match(/\/Type \/Page[^s]/g) ?? []).length >= 2);

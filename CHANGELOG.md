@@ -7,9 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Each finding names the business process it affects. The report and the 30/60/90 plan are ordered by that process, then by severity. One territory or billing fault outranks a longer list of unused fields.
+- Each plan item names a suggested owner role and a retest.
+- A check can return `needs_operator_confirmation` when a pass depends on a business rule a read-only token cannot prove. Set `params.operatorConfirmed` to true on that check after you accept the rule.
+
 ### Changed
 
 - The publish workflow retries the MCP Registry step so a new npm version can appear, and can publish the registry entry alone when the package is already on npm.
+- The score still counts only working checks. Confirmation is not a pass. The Harbour Glass sample stays at 30.
 
 ## [1.4.5] - 2026-10-15
 
