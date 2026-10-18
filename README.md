@@ -11,7 +11,7 @@
 [![Listed on mcpservers.org](https://mcpservers.org/badge.svg)](https://mcpservers.org/servers/m-pineapple/hubspot-auditor)
 [![M-Pineapple/hubspot-auditor MCP server](https://glama.ai/mcp/servers/M-Pineapple/hubspot-auditor/badges/score.svg)](https://glama.ai/mcp/servers/M-Pineapple/hubspot-auditor)
 
-Read-only audit of a HubSpot portal. You get a scored report of what works, what is broken, and what is missing, plus a 30/60/90-day fix plan.
+Read-only audit of a HubSpot portal. You get a scored report of what works, what is broken, what is missing, and what still needs a person to confirm, plus a 30/60/90-day fix plan.
 
 The server speaks MCP over stdio. A CLI runs the same audit. It never sends POST, PUT, PATCH, or DELETE to HubSpot.
 
@@ -43,7 +43,7 @@ Open `reports/example-report.md`.
 - "Which required contact properties are thin?"
 - "Which deal stages have a weak probability?"
 
-You get findings with severity, evidence, and a recommended fix.
+You get findings tagged with the business process they affect, plus severity, evidence, and a recommended fix.
 
 **Administrator checking consent and sending.** You need GDPR fields, spam controls, and sender authentication called out first.
 
@@ -51,7 +51,7 @@ You get findings with severity, evidence, and a recommended fix.
 - "What does the email auditor check?"
 - "Show the 30-day plan."
 
-You get critical and high items at the top of the plan.
+You get each fix with a suggested owner role and a retest. Billing and lead routing come before a long list of lower-impact items.
 
 **Consultant handing a client a checklist.** You need a report you can regenerate after they change a YAML threshold.
 
@@ -85,9 +85,13 @@ Rules live in versioned YAML under `rules/`. Each file has `version: 1` and a li
 | Journey | A published email or active workflow for each buyer stage you list |
 | Program | Dynamic lists, lead score, email subscription types, campaign links, record owners |
 
-A check returns `working`, `broken`, or `missing`. Evidence is counts and property names. The report does not print contact records.
+A check returns `working`, `broken`, `missing`, or `needs_operator_confirmation`. Evidence is counts and property names. The report does not print contact records.
 
-The score is the percentage of checks that are working. The 30-day plan is critical and high broken items. The 60-day plan is medium broken items plus critical and high missing items. The 90-day plan is what remains.
+Findings are ordered by the business process they affect, then by severity. A single territory or billing fault outranks a longer list of unused fields. The count in the evidence does not set the rank.
+
+The score is the percentage of checks that are working. A check that needs operator confirmation is not a pass. The 30-day plan is critical and high broken items. The 60-day plan is medium broken items, plus critical and high missing items, plus critical and high checks that need confirmation. The 90-day plan is what remains. Each plan item names an owner role and a retest.
+
+These checks stay at `needs_operator_confirmation` on a pass until you set `params.operatorConfirmed: true` for that check: required properties, lifecycle and lead status, stage probabilities, stale deals, required stage fields, and stage automation. The flag means you accept the rule in the YAML. It does not change the portal. A broken or missing result is unchanged.
 
 Live mode reads HubSpot with GET requests and a private app token. If a call is forbidden or the payload has no field for that check, the finding is `missing`. A failed ticket-pipeline read does not hide the deal pipeline. Fill rates count only contact properties that were requested. Demo mode loads `demo/portal.json`, a fictional company called Harbour Glass Co.
 
@@ -106,7 +110,7 @@ You: "Run the Harbour Glass demo and tell me the score."
 
 The server calls `run_audit` with `demo: true`.
 
-You get a score of 30, with 14 working, 21 broken, and 11 missing. The first 30-day items are sender authentication, GDPR consent, and the missing tracking script.
+You get a score of 30, with 14 working, 21 broken, 11 missing, and 0 that need operator confirmation. The first 30-day items are required properties, workflow health, and form field mapping.
 
 ## Setup
 
@@ -204,23 +208,24 @@ Use the official server when you want an agent to work in the CRM. Use this serv
 
 The full fictional report is [examples/example-report.md](examples/example-report.md). The JSON form is [examples/example-report.json](examples/example-report.json). The PDF is [examples/example-report.pdf](examples/example-report.pdf).
 
-Harbour Glass Co scores **30**. Fourteen checks are working, 21 are broken, and 11 are missing.
+Harbour Glass Co scores **30**. Fourteen checks are working, 21 are broken, 11 are missing, and none need operator confirmation. On this sample the passes that would need confirmation are already broken or missing.
 
 ```markdown
 # HubSpot audit: Harbour Glass Co
 
 This report uses a fictional sample portal. It is not a customer account.
 
-Score: **30** (share of checks that are working).
+Score: **30** (share of checks that are working). A check that needs operator confirmation is not a pass.
 
 | Status | Count |
 | --- | ---: |
 | Working | 14 |
 | Broken | 21 |
 | Missing | 11 |
+| Needs operator confirmation | 0 |
 ```
 
-The broken list starts with sender authentication, GDPR consent on forms, and the tracking code. The 30-day plan takes the critical and high broken items. The 60-day and 90-day plans follow in the same file.
+The broken list starts with required properties, workflow health, and form field mapping. The 60-day plan starts with the missing deal amount, because billing outranks the medium items in that bucket.
 
 ## Extend a check
 

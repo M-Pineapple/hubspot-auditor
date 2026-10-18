@@ -1,6 +1,7 @@
 import { createRequire } from "node:module";
 import type PDFKit from "pdfkit";
-import type { AuditReport } from "./report.ts";
+import type { AuditReport, PlanItem } from "./report.ts";
+import { statusLabel } from "./report.ts";
 import type { Finding, Status } from "./types.ts";
 
 const require = createRequire(import.meta.url);
@@ -13,7 +14,11 @@ const colours: Record<Status, string> = {
   working: "#15803d",
   broken: "#b91c1c",
   missing: "#b45309",
+  needs_operator_confirmation: "#1d4ed8",
 };
+
+const barOrder: Status[] = ["working", "broken", "missing", "needs_operator_confirmation"];
+const sectionOrder: Status[] = ["broken", "missing", "needs_operator_confirmation", "working"];
 
 export function reportToPdf(report: AuditReport): Promise<Buffer> {
   return new Promise((resolve, reject) => {
@@ -57,11 +62,11 @@ function draw(doc: PDFKit.PDFDocument, report: AuditReport): void {
   doc.fillColor(muted).text(`Generated ${report.generatedAt}`, { width });
   doc.moveDown(1);
   doc.fillColor(ink).font("Helvetica-Bold").fontSize(28).text(String(report.score), { continued: false });
-  doc.font("Helvetica").fontSize(11).fillColor(muted).text("Score. Share of checks that are working.", { width });
+  doc.font("Helvetica").fontSize(11).fillColor(muted).text("Score. Share of checks that are working. Confirmation is not a pass.", { width });
   doc.moveDown(0.8);
   drawBars(doc, report, left, width);
   doc.moveDown(1.2);
-  for (const status of ["broken", "missing", "working"] as const) {
+  for (const status of sectionOrder) {
     const group = report.findings.filter((item) => item.status === status);
     sectionTitle(doc, status, group.length, left, width);
     if (group.length === 0) {
@@ -80,8 +85,10 @@ function draw(doc: PDFKit.PDFDocument, report: AuditReport): void {
       doc.font("Helvetica").fontSize(11).fillColor(muted).text("Nothing queued.", { width });
     } else {
       for (const item of bucket.items) {
-        ensure(doc, 28);
-        doc.font("Helvetica").fontSize(10).fillColor(ink).text(`- ${item}`, left, doc.y, { width });
+        ensure(doc, 48);
+        doc.font("Helvetica").fontSize(10).fillColor(ink).text(planLine(item), left, doc.y, { width });
+        doc.moveDown(0.15);
+        doc.fillColor(muted).text(`Owner: ${item.ownerRole}. Retest: ${item.retest}`, left, doc.y, { width });
         doc.moveDown(0.25);
       }
     }
@@ -90,10 +97,10 @@ function draw(doc: PDFKit.PDFDocument, report: AuditReport): void {
 }
 
 function drawBars(doc: PDFKit.PDFDocument, report: AuditReport, left: number, width: number): void {
-  const total = Math.max(1, report.counts.working + report.counts.broken + report.counts.missing);
+  const total = Math.max(1, barOrder.reduce((sum, status) => sum + report.counts[status], 0));
   const y = doc.y;
   let x = left;
-  for (const status of ["working", "broken", "missing"] as const) {
+  for (const status of barOrder) {
     const share = report.counts[status] / total;
     const bar = Math.max(share > 0 ? 4 : 0, width * share);
     doc.rect(x, y, bar, 14).fill(colours[status]);
@@ -101,15 +108,13 @@ function drawBars(doc: PDFKit.PDFDocument, report: AuditReport, left: number, wi
   }
   doc.y = y + 22;
   doc.font("Helvetica").fontSize(10);
-  const labels = (["working", "broken", "missing"] as const)
-    .map((status) => `${capital(status)} ${report.counts[status]}`)
-    .join("    ");
+  const labels = barOrder.map((status) => `${statusLabel[status]} ${report.counts[status]}`).join("    ");
   doc.fillColor(ink).text(labels, left, doc.y, { width });
 }
 
 function sectionTitle(doc: PDFKit.PDFDocument, name: string, count: number, left: number, width: number): void {
   ensure(doc, 36);
-  const title = name === "plan" ? "30/60/90-day plan" : capital(name);
+  const title = name === "plan" ? "30/60/90-day plan" : statusLabel[name as Status] ?? capital(name);
   doc.moveDown(0.4);
   doc.font("Helvetica-Bold").fontSize(16).fillColor(ink).text(`${title}  ${count}`, left, doc.y, { width });
   const y = doc.y + 2;
@@ -120,16 +125,24 @@ function sectionTitle(doc: PDFKit.PDFDocument, name: string, count: number, left
 function drawFinding(doc: PDFKit.PDFDocument, item: Finding, left: number, width: number): void {
   ensure(doc, 78);
   doc.font("Helvetica-Bold").fontSize(12).fillColor(ink).text(item.title, left, doc.y, { width });
-  doc.font("Helvetica").fontSize(9).fillColor(colours[item.status]).text(`${item.severity}  ${item.id}`, left, doc.y, { width });
+  doc.font("Helvetica").fontSize(9).fillColor(colours[item.status]).text(`${item.severity}  ${item.process}  ${item.id}`, left, doc.y, { width });
   doc.moveDown(0.2);
   doc.font("Helvetica").fontSize(10).fillColor(ink).text(item.evidence, left, doc.y, { width });
   doc.moveDown(0.15);
   doc.fillColor(muted).text(`Fix: ${item.recommendedFix}`, left, doc.y, { width });
+  if (item.status !== "working") {
+    doc.moveDown(0.1);
+    doc.fillColor(muted).text(`Owner: ${item.ownerRole}. Retest: ${item.retest}`, left, doc.y, { width });
+  }
   doc.moveDown(0.7);
 }
 
 function ensure(doc: PDFKit.PDFDocument, needed: number): void {
   if (doc.y + needed > doc.page.height - doc.page.margins.bottom) doc.addPage();
+}
+
+function planLine(item: PlanItem): string {
+  return `- ${item.severity} · ${item.process} · ${item.title}. ${item.action}`;
 }
 
 function capital(value: string): string {

@@ -29,7 +29,11 @@ const portal = snapshot({
 test("pipelines flag weak probabilities, stale deals, and missing stage fields", () => {
   assert.equal(runCheck(rule("pipelines.stage-probabilities", "pipelines", { lateStageMinProbability: 40 }), portal).status, "broken");
   assert.equal(runCheck(rule("pipelines.stale-deals", "pipelines", { staleDays: 30 }), portal).status, "broken");
-  assert.equal(runCheck(rule("pipelines.required-fields", "pipelines", { properties: ["dealname", "amount"] }), portal).status, "missing");
+  const fields = runCheck(rule("pipelines.required-fields", "pipelines", { properties: ["dealname", "amount"] }), portal);
+  assert.equal(fields.status, "missing");
+  assert.equal(fields.process, "billing");
+  assert.equal(fields.severity, "critical");
+  assert.match(fields.evidence, /amount/);
 });
 
 test("a ticket pipeline failure does not hide deal stage probabilities", () => {
@@ -49,7 +53,13 @@ test("a ticket pipeline failure does not hide deal stage probabilities", () => {
       },
     ],
   });
-  assert.equal(runCheck(rule("pipelines.stage-probabilities", "pipelines", { lateStageMinProbability: 40 }), portal).status, "working");
+  const probabilities = runCheck(rule("pipelines.stage-probabilities", "pipelines", { lateStageMinProbability: 40 }), portal);
+  assert.equal(probabilities.status, "needs_operator_confirmation");
+  const accepted = runCheck(
+    rule("pipelines.stage-probabilities", "pipelines", { lateStageMinProbability: 40, operatorConfirmed: true }),
+    portal,
+  );
+  assert.equal(accepted.status, "working");
   assert.equal(runCheck(rule("pipelines.ticket-pipeline", "pipelines"), portal).status, "missing");
 });
 

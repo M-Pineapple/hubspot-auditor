@@ -49,7 +49,7 @@ async function main(): Promise<void> {
       fictional: report.fictional,
       score: report.score,
       counts: report.counts,
-      checks: report.findings.map((item) => ({ id: item.id, status: item.status, severity: item.severity })),
+      checks: report.findings.map((item) => ({ id: item.id, status: item.status, severity: item.severity, process: item.process })),
     }, null, 2)}\n`);
     return;
   }
