@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- The server description is 100 characters or fewer, so the MCP Registry can accept version 1.5.0.
+
 ## [1.5.0] - 2026-10-18
 
 ### Added
