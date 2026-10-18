@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-10-18
+
 ### Added
 
 - Each finding names the business process it affects. The report and the 30/60/90 plan are ordered by that process, then by severity. One territory or billing fault outranks a longer list of unused fields.
