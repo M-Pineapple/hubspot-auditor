@@ -1,4 +1,5 @@
 import type { FetchGap, FormDef, LandingPage, MarketingEmail, PortalSnapshot, Workflow } from "../types.ts";
+import { countRecentSubmissions, formProtection } from "./form-protection.ts";
 import { loadRules } from "../rules.ts";
 import { HubSpotReadClient } from "./client.ts";
 import { classifyMailAuth, lookupTxt, resilientFetch } from "./net.ts";
@@ -71,12 +72,15 @@ interface RawForm {
   id: string;
   name: string;
   archived?: boolean;
-  fieldGroups?: { fields?: { name?: string }[] }[];
+  fieldGroups?: { fields?: { name?: string; label?: string; hidden?: boolean; fieldType?: string }[] }[];
   configuration?: {
     recaptchaEnabled?: boolean;
+    honeypotEnabled?: boolean;
     postSubmitAction?: { type?: string } | string;
   };
   legalConsentOptions?: unknown;
+  recentSubmissions?: number | null;
+  submissionsCapped?: boolean;
 }
 
 interface RawDomain {
@@ -194,7 +198,9 @@ function mapForm(form: RawForm, html: string | null): FormDef {
     embedded: html ? html.includes(form.id) : null,
     unmappedFields: fields.length === 0 ? null : unmapped,
     gdprConsent: form.legalConsentOptions == null ? false : true,
-    spamProtection: form.configuration?.recaptchaEnabled ?? null,
+    spamProtection: formProtection(form),
+    recentSubmissions: form.recentSubmissions ?? null,
+    submissionsCapped: form.submissionsCapped === true,
     followUpEmail: followUpFrom(form),
   };
 }
@@ -234,8 +240,9 @@ export async function loadPortal(
   const formList = await tryGet<{ results?: RawForm[] }>(client, "/marketing/v3/forms", "forms", gaps);
   const forms: RawForm[] = [];
   for (const form of (formList?.results ?? []).slice(0, 30)) {
+    let detail = form;
     try {
-      forms.push(await client.get<RawForm>(`/marketing/v3/forms/${form.id}`));
+      detail = await client.get<RawForm>(`/marketing/v3/forms/${form.id}`);
     } catch (error) {
       if (!gaps.some((gap) => gap.area === "forms-detail")) {
         gaps.push({
@@ -244,8 +251,19 @@ export async function loadPortal(
           status: (error as { status?: number }).status ?? 0,
         });
       }
-      forms.push(form);
     }
+    if (!detail.archived) {
+      try {
+        const body = await client.get<{ results?: { submittedAt?: number }[] }>(
+          `/form-integrations/v1/submissions/forms/${encodeURIComponent(detail.id)}?limit=50`,
+        );
+        const counted = countRecentSubmissions(body.results ?? [], Date.now());
+        detail = { ...detail, recentSubmissions: counted.count, submissionsCapped: counted.capped };
+      } catch {
+        detail = { ...detail, recentSubmissions: null, submissionsCapped: false };
+      }
+    }
+    forms.push(detail);
   }
   const flows = await tryGet<{ results?: { id: string; name: string; isEnabled?: boolean; flowType?: string }[] }>(
     client,

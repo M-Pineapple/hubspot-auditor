@@ -1,5 +1,5 @@
 import type { BusinessProcess, Finding, PortalSnapshot, Severity, Status } from "./types.ts";
-import { compareFindings } from "./impact.ts";
+import { checkMeta, compareFindings } from "./impact.ts";
 import { loadRules } from "./rules.ts";
 import { runCheck } from "./checks.ts";
 
@@ -52,7 +52,8 @@ export function audit(snapshot: PortalSnapshot, generatedAt = new Date().toISOSt
 }
 
 function planItem(item: Finding): PlanItem {
-  const retest = item.status === "needs_operator_confirmation"
+  const acceptsRule = item.status === "needs_operator_confirmation" && checkMeta[item.id]?.confirmPass === true;
+  const retest = acceptsRule
     ? `${item.retest} Set params.operatorConfirmed to true only after you accept the rule.`
     : item.retest;
   return {

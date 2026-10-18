@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Each finding names the business process it affects. The report and the 30/60/90 plan are ordered by that process, then by severity. One territory or billing fault outranks a longer list of unused fields.
 - Each plan item names a suggested owner role and a retest.
 - A check can return `needs_operator_confirmation` when a pass depends on a business rule a read-only token cannot prove. Set `params.operatorConfirmed` to true on that check after you accept the rule.
+- Spam protection lists live forms with no captcha and no honeypot field, with a 30-day submission count when the read succeeds. A public form with submissions ranks above a form that is not embedded. When the API cannot confirm protection, the check is `needs_operator_confirmation` instead of a pass.
 
 ### Changed
 

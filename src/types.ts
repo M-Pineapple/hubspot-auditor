@@ -88,6 +88,9 @@ export interface FormDef {
   gdprConsent: boolean | null;
   followUpEmail: boolean | null;
   spamProtection: boolean | null;
+  /** Submissions in the last 30 days. Null when the read did not return a count. */
+  recentSubmissions?: number | null;
+  submissionsCapped?: boolean;
 }
 
 export interface Tracking {
