@@ -87,6 +87,8 @@ Rules live in versioned YAML under `rules/`. Each file has `version: 1` and a li
 
 A check returns `working`, `broken`, `missing`, or `needs_operator_confirmation`. Evidence is counts and property names. The report does not print contact records.
 
+Spam protection lists each live form that has no captcha and no honeypot field. A form on a public page with recent submissions ranks above a form that is not embedded, even when the private form has more submissions. The count comes from a read of the last 30 days when the submissions API allows it. When that read is missing, the report says the count was not returned. When captcha and honeypot cannot be confirmed from the form definition, the check is `needs_operator_confirmation` rather than a pass. The forms API exposes `recaptchaEnabled`. It does not return HubSpot's honeypot toggle, so a hidden honeypot field is the field signal, and the finding asks you to confirm the toggle in the form editor.
+
 Findings are ordered by the business process they affect, then by severity. A single territory or billing fault outranks a longer list of unused fields. The count in the evidence does not set the rank.
 
 The score is the percentage of checks that are working. A check that needs operator confirmation is not a pass. The 30-day plan is critical and high broken items. The 60-day plan is medium broken items, plus critical and high missing items, plus critical and high checks that need confirmation. The 90-day plan is what remains. Each plan item names an owner role and a retest.
@@ -110,7 +112,7 @@ You: "Run the Harbour Glass demo and tell me the score."
 
 The server calls `run_audit` with `demo: true`.
 
-You get a score of 30, with 14 working, 21 broken, 11 missing, and 0 that need operator confirmation. The first 30-day items are required properties, workflow health, and form field mapping.
+You get a score of 30, with 14 working, 21 broken, 11 missing, and 0 that need operator confirmation. The first 30-day items are required properties, workflow health, and form field mapping. Spam protection is also in that plan, after the higher-impact faults.
 
 ## Setup
 
@@ -208,7 +210,7 @@ Use the official server when you want an agent to work in the CRM. Use this serv
 
 The full fictional report is [examples/example-report.md](examples/example-report.md). The JSON form is [examples/example-report.json](examples/example-report.json). The PDF is [examples/example-report.pdf](examples/example-report.pdf).
 
-Harbour Glass Co scores **30**. Fourteen checks are working, 21 are broken, 11 are missing, and none need operator confirmation. On this sample the passes that would need confirmation are already broken or missing.
+Harbour Glass Co scores **30**. Fourteen checks are working, 21 are broken, 11 are missing, and none need operator confirmation. The public demo form has no captcha and 12 submissions in 30 days, so spam protection is critical. On this sample the passes that would need confirmation are already broken or missing.
 
 ```markdown
 # HubSpot audit: Harbour Glass Co
@@ -225,7 +227,7 @@ Score: **30** (share of checks that are working). A check that needs operator co
 | Needs operator confirmation | 0 |
 ```
 
-The broken list starts with required properties, workflow health, and form field mapping. The 60-day plan starts with the missing deal amount, because billing outranks the medium items in that bucket.
+The broken list starts with required properties, workflow health, and form field mapping. Spam protection is critical and sits later in that list, because conversion ranks after lead routing. The 60-day plan starts with the missing deal amount, because billing outranks the medium items in that bucket.
 
 ## Extend a check
 

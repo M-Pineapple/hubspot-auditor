@@ -46,8 +46,8 @@
     {"id": "d2", "pipelineId": "deals-main", "stageId": "quote", "daysSinceUpdate": 3}
   ],
   "forms": [
-    {"id": "f1", "name": "Demo request", "archived": false, "embedded": true, "unmappedFields": 1, "gdprConsent": false, "followUpEmail": false, "spamProtection": false},
-    {"id": "f2", "name": "Old quiz", "archived": false, "embedded": false, "unmappedFields": 0, "gdprConsent": true, "followUpEmail": false, "spamProtection": true}
+    {"id": "f1", "name": "Demo request", "archived": false, "embedded": true, "unmappedFields": 1, "gdprConsent": false, "followUpEmail": false, "spamProtection": false, "recentSubmissions": 12, "submissionsCapped": false},
+    {"id": "f2", "name": "Old quiz", "archived": false, "embedded": false, "unmappedFields": 0, "gdprConsent": true, "followUpEmail": false, "spamProtection": true, "recentSubmissions": 0, "submissionsCapped": false}
   ],
   "tracking": {
     "publicSiteUrl": "https://harbourglass.example",

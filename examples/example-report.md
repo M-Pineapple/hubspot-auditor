@@ -125,11 +125,11 @@ Score: **30** (share of checks that are working). A check that needs operator co
 
 ### Spam protection
 
-- Severity: high
+- Severity: critical
 - Process: conversion
 - Check: `forms.spam-protection`
-- Evidence: 1 live form(s) have no spam protection.
-- Fix: Turn on CAPTCHA or another spam control.
+- Evidence: 1 live form(s) have no captcha and no honeypot field: Demo request (on a public page, 12 submissions in 30 days). The forms API does not return HubSpot's honeypot toggle, so confirm that setting in the form editor if you use it.
+- Fix: Turn on captcha or add a honeypot field.
 - Owner: Marketing ops
 - Retest: Submit the form once as a person and confirm a bot-style submission is blocked or dropped.
 
@@ -484,7 +484,7 @@ None.
 - critical · deliverability · Sender domain authentication (`email.sender-authentication`). Publish the missing DNS records before the next campaign.
   - Owner: Marketing ops.
   - Retest: Query the sender domain and confirm SPF, DKIM, and DMARC each return a pass.
-- high · conversion · Spam protection (`forms.spam-protection`). Turn on CAPTCHA or another spam control.
+- critical · conversion · Spam protection (`forms.spam-protection`). Turn on captcha or add a honeypot field.
   - Owner: Marketing ops.
   - Retest: Submit the form once as a person and confirm a bot-style submission is blocked or dropped.
 - critical · reporting · Tracking code on the public site (`tracking.install-code`). Add the portal tracking code to the site layout.

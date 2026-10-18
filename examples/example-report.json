@@ -251,6 +251,18 @@
       "retest": "Mark one test contact unengaged and confirm the sunset workflow suppresses further sends."
     },
     {
+      "id": "forms.spam-protection",
+      "auditor": "forms",
+      "status": "broken",
+      "severity": "critical",
+      "process": "conversion",
+      "title": "Spam protection",
+      "evidence": "1 live form(s) have no captcha and no honeypot field: Demo request (on a public page, 12 submissions in 30 days). The forms API does not return HubSpot's honeypot toggle, so confirm that setting in the form editor if you use it.",
+      "recommendedFix": "Turn on captcha or add a honeypot field.",
+      "ownerRole": "Marketing ops",
+      "retest": "Submit the form once as a person and confirm a bot-style submission is blocked or dropped."
+    },
+    {
       "id": "brand.logo",
       "auditor": "brand",
       "status": "working",
@@ -297,18 +309,6 @@
       "recommendedFix": "Archive forms that no page still embeds.",
       "ownerRole": "Marketing ops",
       "retest": "Load the primary page and confirm the live form is the one that should accept submissions."
-    },
-    {
-      "id": "forms.spam-protection",
-      "auditor": "forms",
-      "status": "broken",
-      "severity": "high",
-      "process": "conversion",
-      "title": "Spam protection",
-      "evidence": "1 live form(s) have no spam protection.",
-      "recommendedFix": "Turn on CAPTCHA or another spam control.",
-      "ownerRole": "Marketing ops",
-      "retest": "Submit the form once as a person and confirm a bot-style submission is blocked or dropped."
     },
     {
       "id": "brand.colours",
@@ -651,11 +651,11 @@
         {
           "id": "forms.spam-protection",
           "title": "Spam protection",
-          "severity": "high",
+          "severity": "critical",
           "process": "conversion",
           "ownerRole": "Marketing ops",
           "retest": "Submit the form once as a person and confirm a bot-style submission is blocked or dropped.",
-          "action": "Turn on CAPTCHA or another spam control."
+          "action": "Turn on captcha or add a honeypot field."
         },
         {
           "id": "tracking.install-code",

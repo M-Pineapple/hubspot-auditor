@@ -1,5 +1,6 @@
 import { applyPropertyImpact, checkMeta, CONFIRM_NOTE, namesByImpact } from "./impact.ts";
-import type { CheckRule, Finding, PortalSnapshot, Severity, Status } from "./types.ts";
+import { severityForSpamRank, spamExposureRank } from "./hubspot/form-protection.ts";
+import type { CheckRule, Finding, FormDef, PortalSnapshot, Severity, Status } from "./types.ts";
 
 export interface CheckContext {
   snapshot: PortalSnapshot;
@@ -87,6 +88,26 @@ export function portalNameList(names: string[], limit = 5): string {
   const shown = clean.slice(0, limit);
   const extra = clean.length - shown.length;
   return extra > 0 ? `${shown.join(", ")} and ${extra} more` : shown.join(", ");
+}
+
+function compareSpamForms(left: FormDef, right: FormDef): number {
+  return spamExposureRank(left) - spamExposureRank(right) || left.name.localeCompare(right.name);
+}
+
+function describeSpamForm(form: FormDef): string {
+  const name = sanitizePortalName(form.name) || "unnamed form";
+  const place = form.embedded === true ? "on a public page" : form.embedded === false ? "not embedded" : "embed status unknown";
+  let traffic = "submission count was not returned";
+  if (typeof form.recentSubmissions === "number") {
+    traffic = form.submissionsCapped === true
+      ? `at least ${form.recentSubmissions} submissions in 30 days`
+      : `${form.recentSubmissions} submissions in 30 days`;
+  }
+  return `${name} (${place}, ${traffic})`;
+}
+
+function spamList(forms: FormDef[]): string {
+  return forms.map(describeSpamForm).join("; ");
 }
 
 function num(params: Record<string, unknown>, key: string, fallback: number): number {
@@ -414,18 +435,34 @@ export const checks: Record<string, CheckFn> = {
   "forms.spam-protection": ({ snapshot, rule }) => {
     const blocked = blockedFinding(rule, snapshot, "forms", "Grant the read scope for forms and run the audit again.");
     if (blocked) return blocked;
-    if (snapshot.forms.some((form) => !form.archived && form.spamProtection === null)) {
-      return finding(rule, "missing", "Spam protection was not in the read response.", "Read the form configuration for CAPTCHA or a honeypot.");
+    const live = snapshot.forms.filter((form) => !form.archived);
+    if (live.length === 0) {
+      return finding(rule, "missing", "No live form was returned.", "Publish one form before judging spam protection.");
     }
-    const open = snapshot.forms.filter((form) => !form.archived && form.spamProtection === false);
+    const open = [...live.filter((form) => form.spamProtection === false)].sort(compareSpamForms);
+    const unknown = [...live.filter((form) => form.spamProtection === null)].sort(compareSpamForms);
+    const fix = "Turn on captcha or add a honeypot field.";
+    if (open.length === 0 && unknown.length === 0) {
+      return finding(rule, "working", "Live forms have captcha or a honeypot field.", "Keep captcha or a honeypot on public forms.");
+    }
     if (open.length === 0) {
-      return finding(rule, "working", "Live forms have spam protection.", "Keep CAPTCHA or a honeypot on public forms.");
+      const worst = severityForSpamRank(spamExposureRank(unknown[0]));
+      return finding(
+        rule,
+        "needs_operator_confirmation",
+        `${unknown.length} live form(s) could not be confirmed from the forms API: ${spamList(unknown)}. Captcha or a honeypot field was not in the read, so this is not a pass.`,
+        fix,
+        worst,
+      );
     }
+    const worst = severityForSpamRank(spamExposureRank(open[0]));
+    const unknownNote = unknown.length > 0 ? ` ${unknown.length} other live form(s) still need operator confirmation: ${spamList(unknown)}.` : "";
     return finding(
       rule,
       "broken",
-      `${open.length} live form(s) have no spam protection.`,
-      "Turn on CAPTCHA or another spam control.",
+      `${open.length} live form(s) have no captcha and no honeypot field: ${spamList(open)}.${unknownNote} The forms API does not return HubSpot's honeypot toggle, so confirm that setting in the form editor if you use it.`,
+      fix,
+      worst,
     );
   },
 
