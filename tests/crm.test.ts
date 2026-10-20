@@ -76,6 +76,41 @@ test("crm flags thin required properties and unused custom properties", () => {
   assert.equal(runCheck(rule("crm.unused-custom-properties", "crm"), portal).status, "missing");
 });
 
+test("crm does not pass unused custom properties without sampled values", () => {
+  for (const values of [
+    { filledCount: null, totalCount: 5 },
+    { filledCount: 0, totalCount: 0 },
+  ]) {
+    const portal = snapshot({
+      properties: [
+        { objectType: "contacts", name: "email", label: "Email", custom: false, required: true, filledCount: 5, totalCount: 5 },
+        { objectType: "contacts", name: "custom_field", label: "Custom field", custom: true, required: false, ...values },
+      ],
+    });
+    const finding = runCheck(rule("crm.unused-custom-properties", "crm"), portal);
+    assert.equal(finding.status, "missing");
+    assert.match(finding.evidence, /No custom properties had sampled contact values/);
+    assert.match(finding.recommendedFix, /Request custom properties/);
+    assert.doesNotMatch(finding.recommendedFix, /archive/i);
+  }
+});
+
+test("crm judges unused custom properties only from sampled contacts", () => {
+  const measured = {
+    objectType: "contacts" as const, name: "measured", label: "Measured", custom: true,
+    required: false, filledCount: 1, totalCount: 5,
+  };
+  const portal = snapshot({ properties: [
+    measured,
+    { ...measured, name: "unsampled", filledCount: null },
+    { ...measured, name: "no_contacts", filledCount: 0, totalCount: 0 },
+  ] });
+  assert.equal(runCheck(rule("crm.unused-custom-properties", "crm"), portal).status, "working");
+  const unused = runCheck(rule("crm.unused-custom-properties", "crm", { maxFilled: 1 }), portal);
+  assert.equal(unused.status, "missing");
+  assert.match(unused.evidence, /1 custom property name\(s\) have no values: measured/);
+});
+
 test("crm does not treat an unsampled property as empty", () => {
   const portal = snapshot({
     properties: [

@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The unused custom properties check reports missing evidence when no custom properties have sampled contacts, instead of passing or recommending archival from an empty sample.
 - The server description is 100 characters or fewer, so the MCP Registry can accept version 1.5.0.
 
 ## [1.5.0] - 2026-10-18
