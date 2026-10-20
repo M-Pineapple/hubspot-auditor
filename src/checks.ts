@@ -194,9 +194,18 @@ export const checks: Record<string, CheckFn> = {
   "crm.unused-custom-properties": ({ snapshot, rule }) => {
     const blocked = blockedFinding(rule, snapshot, "properties", "Grant the read scope for properties and run the audit again.");
     if (blocked) return blocked;
-    const unused = snapshot.properties.filter(
-      (property) => property.custom && property.filledCount !== null && property.filledCount <= num(rule.params, "maxFilled", 0),
+    const sampled = snapshot.properties.filter(
+      (property) => property.custom && property.filledCount !== null && property.totalCount > 0,
     );
+    if (sampled.length === 0) {
+      return finding(
+        rule,
+        "missing",
+        "No custom properties had sampled contact values, so usage could not be assessed.",
+        "Request custom properties on the contact read and sample contacts before judging usage.",
+      );
+    }
+    const unused = sampled.filter((property) => (property.filledCount ?? 0) <= num(rule.params, "maxFilled", 0));
     if (unused.length === 0) {
       return finding(rule, "working", "Every custom property in the sample has at least one value.", "Review new properties after 30 days.");
     }
