@@ -15,6 +15,8 @@ Read-only audit of a HubSpot portal. You get a scored report of what works, what
 
 The server speaks MCP over stdio. A CLI runs the same audit. It never sends POST, PUT, PATCH, or DELETE to HubSpot.
 
+What's new in v1.5.1: the unused custom properties check no longer passes, or suggests archiving, when it has no sampled values to go on. Thanks to @harrisonoconnorhover. See [CHANGELOG.md](CHANGELOG.md).
+
 What's new in v1.5.0: findings are ranked by the business process they affect, each fix names an owner and a retest, and forms without captcha or a honeypot are flagged. See [CHANGELOG.md](CHANGELOG.md).
 
 What's new in v1.4.5: tagged releases publish to npm with GitHub Trusted Publishing. See [CHANGELOG.md](CHANGELOG.md).

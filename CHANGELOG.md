@@ -7,9 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.5.1] - 2026-10-20
+
 ### Fixed
 
-- The unused custom properties check reports missing evidence when no custom properties have sampled contacts, instead of passing or recommending archival from an empty sample.
+- The unused custom properties check reports missing evidence when no custom properties have sampled contacts, instead of passing or recommending archival from an empty sample. Thanks to [@harrisonoconnorhover](https://github.com/harrisonoconnorhover) for the fix in [#39](https://github.com/M-Pineapple/hubspot-auditor/pull/39).
 - The server description is 100 characters or fewer, so the MCP Registry can accept version 1.5.0.
 
 ## [1.5.0] - 2026-10-18
