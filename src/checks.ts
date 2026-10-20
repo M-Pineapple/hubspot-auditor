@@ -167,15 +167,22 @@ export const checks: Record<string, CheckFn> = {
     const blocked = blockedFinding(rule, snapshot, "properties", "Grant the read scope for properties and run the audit again.");
     if (blocked) return blocked;
     const required = new Set(strList(rule.params, "names"));
-    const judged = snapshot.properties.filter((property) => {
-      if (required.size > 0 && !required.has(property.name)) return false;
-      if (required.size === 0 && !property.required) return false;
-      return property.filledCount !== null && property.totalCount > 0;
-    });
-    if (judged.length === 0) {
-      return finding(rule, "missing", "Required properties were not in the contact sample.", "Request those properties on the contact read and run the audit again.");
+    if (required.size === 0) {
+      for (const property of snapshot.properties) if (property.required) required.add(property.name);
     }
+    const judged = snapshot.properties.filter(
+      (property) => required.has(property.name) && property.filledCount !== null && property.totalCount > 0,
+    );
+    const assessed = new Set(judged.map((property) => property.name));
+    const unassessed = [...required].filter((name) => !assessed.has(name));
+    const coverageNote = unassessed.length > 0
+      ? ` Required properties could not be assessed: ${portalNameList(unassessed)}.`
+      : "";
+    const readFix = "Request those properties on the contact read and run the audit again.";
     const thin = judged.filter((property) => (property.filledCount ?? 0) / property.totalCount < num(rule.params, "minFillRatio", 0.9));
+    if (judged.length === 0 || (thin.length === 0 && unassessed.length > 0)) {
+      return finding(rule, "missing", `Required-property coverage is incomplete.${coverageNote}`, readFix);
+    }
     if (thin.length === 0) {
       return finding(rule, "working", "Required properties are filled on at least 90% of records.", "Keep required fields on create forms.");
     }
@@ -184,8 +191,8 @@ export const checks: Record<string, CheckFn> = {
       finding(
         rule,
         "broken",
-        `${thin.length} required property name(s) are below the fill ratio: ${portalNameList(ordered)}.`,
-        "Make the thin properties required on the create forms and backfill the blanks.",
+        `${thin.length} required property name(s) are below the fill ratio: ${portalNameList(ordered)}.${coverageNote}`,
+        `Make the thin properties required on the create forms and backfill the blanks.${unassessed.length > 0 ? ` ${readFix}` : ""}`,
       ),
       ordered,
     );
