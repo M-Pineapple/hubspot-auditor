@@ -253,11 +253,13 @@ export const checks: Record<string, CheckFn> = {
     for (const pipeline of snapshot.pipelines.filter((item) => item.objectType === "deals")) {
       pipeline.stages.forEach((stage, index) => {
         if (index === 0) return;
+        // HubSpot defines 0% as Closed Lost and 100% as Closed Won.
+        if (stage.probability === 0 || stage.probability === 100) return;
         if (stage.probability === null || stage.probability < floor) weak.push(stage.label);
       });
     }
     if (weak.length === 0) {
-      return finding(rule, "working", "Later deal stages have a probability at or above the floor.", "Review probabilities when you add a stage.");
+      return finding(rule, "working", "Later open deal stages have a probability at or above the floor.", "Review probabilities when you add a stage.");
     }
     return finding(
       rule,

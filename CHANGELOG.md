@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- The deal-stage probability check excludes Closed Lost (0%) and Closed Won (100%), so the default HubSpot pipeline is not flagged for its correctly configured Closed Lost stage. Stage labels do not affect this classification.
+
 ## [1.5.1] - 2026-10-20
 
 ### Fixed
