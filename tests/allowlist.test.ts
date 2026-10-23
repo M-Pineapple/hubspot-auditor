@@ -75,7 +75,7 @@ function scopeRule() {
   return item;
 }
 
-const ATTRIBUTION_DEALS = "/crm/v3/objects/deals?properties=pipeline,dealstage,hs_lastmodifieddate,amount,closedate,hs_is_closed_won,hs_analytics_source,hs_analytics_source_data_1,hs_campaign&associations=contacts";
+const ATTRIBUTION_DEALS = "/crm/v3/objects/deals?properties=pipeline,dealstage,hs_lastmodifieddate,hs_is_closed_won,hs_analytics_source,hs_campaign";
 const CAMPAIGN_GUID = "11111111-2222-4333-8444-555555555555";
 
 test("the deals attribution query stays allowlisted", async () => {

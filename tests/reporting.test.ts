@@ -16,12 +16,45 @@ test("reporting keeps a dashboard and flags missing attribution and funnel repor
   assert.equal(runCheck(rule("reporting.lifecycle-funnel", "reporting"), portal).status, "missing");
 });
 
+const SOURCE_INHERITANCE =
+  "Deals with no associated contact or company show as unsourced, because HubSpot inherits the original source from them.";
+
+const DEAL_PROPERTIES = [
+  "pipeline",
+  "dealstage",
+  "hs_lastmodifieddate",
+  "hs_is_closed_won",
+  "hs_analytics_source",
+  "hs_campaign",
+];
+
 function attributionRule() {
   return rule("reporting.deal-attribution", "reporting", {
     minClosedWon: 5,
     minSourceShare: 0.8,
-    minCampaignShare: 0.5,
   });
+}
+
+function assertSourceInheritance(fix: string) {
+  assert.equal(fix.includes(SOURCE_INHERITANCE), true);
+}
+
+function assertCampaignEvidence(evidence: string, setCount: number, total: number) {
+  assert.match(
+    evidence,
+    new RegExp(`Campaign property set on ${setCount} of ${total} sampled closed-won deals, where present \\(evidence only\\)\\.`),
+  );
+  assert.equal(evidence.includes("Campaign share"), false);
+  assert.equal(evidence.includes("floor"), false);
+}
+
+function assertDealRead(line: string) {
+  const path = line.slice(line.indexOf(" ") + 1);
+  const url = new URL(path, "https://api.hubapi.com");
+  assert.equal(url.pathname, "/crm/v3/objects/deals");
+  assert.deepEqual(url.searchParams.get("properties")?.split(","), DEAL_PROPERTIES);
+  assert.equal(url.searchParams.has("associations"), false);
+  assert.deepEqual([...url.searchParams.keys()].sort(), ["limit", "properties"]);
 }
 
 function attributionPortal(deals: PortalSnapshot["deals"], partial: Partial<PortalSnapshot> = {}) {
@@ -52,8 +85,6 @@ function closedWonDeal(index: number, extra: Partial<PortalSnapshot["deals"][num
     isClosedWon: true,
     originalSource: "ORGANIC_SEARCH",
     campaignId: "campaign-secret-id",
-    amount: 987654,
-    contactCount: 9,
     ...extra,
   };
 }
@@ -72,6 +103,7 @@ test("hs_is_closed_won true counts a deal when the stage is still open", () => {
   assert.equal(result.status, "working");
   assert.match(result.evidence, /of 5 sampled closed-won deals/);
   assert.match(result.evidence, /Ad spend needs_operator_confirmation/);
+  assertSourceInheritance(result.recommendedFix);
   assertNoPrivateDealData(result.evidence);
 });
 
@@ -116,6 +148,7 @@ test("fewer than five closed-won deals is missing", () => {
   assert.equal(result.status, "missing");
   assert.match(result.evidence, /of 4 sampled closed-won deals/);
   assert.match(result.evidence, /Ad spend needs_operator_confirmation/);
+  assertSourceInheritance(result.recommendedFix);
 });
 
 test("source share below 0.8 is broken and 0.8 is working", () => {
@@ -126,6 +159,7 @@ test("source share below 0.8 is broken and 0.8 is working", () => {
   assert.equal(broken.status, "broken");
   assert.match(broken.evidence, /of 5 sampled closed-won deals/);
   assert.match(broken.evidence, /share 0\.60/);
+  assertSourceInheritance(broken.recommendedFix);
   const enough = Array.from({ length: 5 }, (_, index) => closedWonDeal(index, {
     originalSource: index < 4 ? "ORGANIC_SEARCH" : null,
   }));
@@ -134,16 +168,27 @@ test("source share below 0.8 is broken and 0.8 is working", () => {
   assert.match(working.evidence, /share 0\.80/);
 });
 
-test("a low campaign share alone stays working", () => {
+test("a low campaign count alone stays working", () => {
   const deals = Array.from({ length: 5 }, (_, index) => closedWonDeal(index, {
     campaignId: index === 0 ? "campaign-secret-id" : null,
   }));
   const result = runCheck(attributionRule(), attributionPortal(deals));
   assert.equal(result.status, "working");
   assert.match(result.evidence, /of 5 sampled closed-won deals/);
-  assert.match(result.evidence, /Campaign share 0\.20/);
+  assertCampaignEvidence(result.evidence, 1, 5);
   assert.match(result.evidence, /Ad spend needs_operator_confirmation/);
+  assertSourceInheritance(result.recommendedFix);
   assertNoPrivateDealData(result.evidence);
+});
+
+test("closed-won deals with no campaign values still pass on source share", () => {
+  const deals = Array.from({ length: 5 }, (_, index) => closedWonDeal(index, { campaignId: null }));
+  const result = runCheck(attributionRule(), attributionPortal(deals));
+  assert.equal(result.status, "working");
+  assert.match(result.evidence, /share 1\.00/);
+  assert.equal(result.evidence.includes("0.00"), false);
+  assertCampaignEvidence(result.evidence, 0, 5);
+  assertSourceInheritance(result.recommendedFix);
 });
 
 test("a missing campaigns scope reports that part missing and still judges source share", () => {
@@ -156,6 +201,7 @@ test("a missing campaigns scope reports that part missing and still judges sourc
   assert.match(result.evidence, /of 5 sampled closed-won deals/);
   assert.match(result.evidence, /Campaign part: missing/);
   assert.match(result.recommendedFix, /marketing\.campaigns\.read/);
+  assertSourceInheritance(result.recommendedFix);
   assert.match(result.evidence, /Ad spend needs_operator_confirmation/);
 });
 
@@ -179,6 +225,7 @@ test("evidence lists per-pipeline counts and leaves out deal identifiers", () =>
 test("the Harbour Glass demo reports closed-won attribution without deal identifiers", () => {
   const item = loadRules().find((entry) => entry.id === "reporting.deal-attribution");
   assert.ok(item);
+  assert.equal("minCampaignShare" in item.params, false);
   const finding = runCheck(item, loadDemoPortal());
   assert.equal(finding.status, "working");
   assert.match(finding.evidence, /of \d+ sampled closed-won deals/);
@@ -210,14 +257,10 @@ test("loadPortal maps attribution fields, caps campaign asset reads at 20, and r
               pipeline: "sales",
               dealstage: "won",
               hs_lastmodifieddate: "2026-10-20T00:00:00.000Z",
-              amount: "1500.50",
-              closedate: "2026-10-01",
               hs_is_closed_won: "true",
               hs_analytics_source: "ORGANIC_SEARCH",
-              hs_analytics_source_data_1: "Google",
               hs_campaign: spring,
             },
-            associations: { contacts: { results: [{ id: "c1" }, { id: "c1" }, { id: "c2" }] } },
           },
           {
             id: "deal-2",
@@ -225,7 +268,6 @@ test("loadPortal maps attribution fields, caps campaign asset reads at 20, and r
               pipeline: "sales",
               dealstage: "lost",
               hs_is_closed_won: "false",
-              amount: " ",
               hs_analytics_source: "  ",
               hs_campaign: "",
             },
@@ -252,19 +294,18 @@ test("loadPortal maps attribution fields, caps campaign asset reads at 20, and r
   assert.equal(seen.some((item) => item.includes("/crm/v3/properties/deals")), false);
   const dealRead = seen.find((item) => item.includes("/crm/v3/objects/deals?"));
   assert.ok(dealRead);
-  assert.match(dealRead, /properties=pipeline,dealstage,hs_lastmodifieddate,amount,closedate,hs_is_closed_won,hs_analytics_source,hs_analytics_source_data_1,hs_campaign/);
-  assert.match(dealRead, /associations=contacts/);
+  assertDealRead(dealRead);
   assert.match(seen.join("\n"), /\/marketing\/v3\/campaigns\?limit=100&properties=hs_name/);
   assert.equal(portal.deals[0]?.isClosedWon, true);
   assert.equal(portal.deals[0]?.originalSource, "ORGANIC_SEARCH");
   assert.equal(portal.deals[0]?.campaignId, spring);
-  assert.equal(portal.deals[0]?.contactCount, 2);
-  assert.equal(portal.deals[0]?.amount, 1500.5);
+  assert.equal(Object.hasOwn(portal.deals[0] ?? {}, "amount"), false);
+  assert.equal(Object.hasOwn(portal.deals[0] ?? {}, "contactCount"), false);
   assert.equal(portal.deals[1]?.isClosedWon, false);
   assert.equal(portal.deals[1]?.originalSource, null);
   assert.equal(portal.deals[1]?.campaignId, null);
-  assert.equal(portal.deals[1]?.amount, null);
-  assert.equal(portal.deals[1]?.contactCount, 0);
+  assert.equal(Object.hasOwn(portal.deals[1] ?? {}, "amount"), false);
+  assert.equal(Object.hasOwn(portal.deals[1] ?? {}, "contactCount"), false);
   assert.deepEqual(portal.campaigns, [
     { id: spring, name: "Spring studio", adAssetCount: 2 },
     { id: autumn, name: "Autumn kiln", adAssetCount: 0 },
