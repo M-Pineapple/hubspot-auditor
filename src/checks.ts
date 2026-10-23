@@ -264,8 +264,8 @@ export const checks: Record<string, CheckFn> = {
     for (const pipeline of snapshot.pipelines.filter((item) => item.objectType === "deals")) {
       pipeline.stages.forEach((stage, index) => {
         if (index === 0) return;
-        // HubSpot defines 0% as Closed Lost and 100% as Closed Won.
-        if (stage.probability === 0 || stage.probability === 100) return;
+        // Prefer explicit stage metadata; older snapshots may only have probabilities.
+        if (stage.isClosed ?? (stage.probability === 0 || stage.probability === 100)) return;
         if (stage.probability === null || stage.probability < floor) weak.push(stage.label);
       });
     }

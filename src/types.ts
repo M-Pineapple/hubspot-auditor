@@ -59,6 +59,7 @@ export interface Stage {
   id: string;
   label: string;
   probability: number | null;
+  isClosed?: boolean;
   requiredProperties: string[];
 }
 

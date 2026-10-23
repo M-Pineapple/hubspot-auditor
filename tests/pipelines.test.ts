@@ -79,6 +79,53 @@ test("low or unknown open-stage probabilities still fail alongside closed stages
   }
 });
 
+test("explicitly open stages at zero probability fail when loaded from HubSpot", async () => {
+  for (const isClosed of ["false", false]) {
+    const loaded = await loadPortal("fixture-token", undefined, async (input) => {
+      if (new URL(String(input)).pathname === "/crm/v3/pipelines/deals") {
+        return Response.json({ results: [{
+          id: "sales", label: "Sales",
+          stages: [
+            { id: "new", label: "New", metadata: { probability: "0.0", isClosed } },
+            { id: "quote", label: "Quote", metadata: { probability: "0.0", isClosed } },
+          ],
+        }] });
+      }
+      return Response.json({ results: [] });
+    });
+    for (const operatorConfirmed of [false, true]) {
+      const result = runCheck(rule("pipelines.stage-probabilities", "pipelines", {
+        lateStageMinProbability: 40, operatorConfirmed,
+      }), loaded);
+      assert.equal(result.status, "broken");
+      assert.match(result.evidence, /^1 later deal stage/);
+    }
+    assert.deepEqual(loaded.pipelines[0].stages.map((stage) => stage.isClosed), [false, false]);
+  }
+});
+
+test("explicitly closed stages take precedence over low or unknown probabilities", async () => {
+  for (const isClosed of ["true", true]) {
+    const loaded = await loadPortal("fixture-token", undefined, async (input) => {
+      if (new URL(String(input)).pathname === "/crm/v3/pipelines/deals") {
+        return Response.json({ results: [{
+          id: "sales", label: "Sales",
+          stages: [
+            { id: "new", label: "New", metadata: { probability: "0.2" } },
+            { id: "closed-low", label: "Custom outcome", metadata: { probability: "0.2", isClosed } },
+            { id: "closed-unknown", label: "Another outcome", metadata: { isClosed } },
+          ],
+        }] });
+      }
+      return Response.json({ results: [] });
+    });
+    const check = rule("pipelines.stage-probabilities", "pipelines", { lateStageMinProbability: 40 });
+    assert.equal(runCheck(check, loaded).status, "needs_operator_confirmation");
+    assert.equal(runCheck({ ...check, params: { ...check.params, operatorConfirmed: true } }, loaded).status, "working");
+    assert.deepEqual(loaded.pipelines[0].stages.map((stage) => stage.isClosed), [undefined, true, true]);
+  }
+});
+
 test("a ticket pipeline failure does not hide deal stage probabilities", () => {
   const portal = snapshot({
     fetchGaps: [{ area: "pipelines-tickets", path: "/crm/v3/pipelines/tickets", status: 403 }],
