@@ -827,9 +827,7 @@ export const checks: Record<string, CheckFn> = {
     const withCampaign = closed.filter((deal) => (deal.campaignId ?? "").trim() !== "");
     const minClosed = num(rule.params, "minClosedWon", 5);
     const minSource = num(rule.params, "minSourceShare", 0.8);
-    const minCampaign = num(rule.params, "minCampaignShare", 0.5);
     const sourceShare = total === 0 ? null : sourced.length / total;
-    const campaignShare = total === 0 ? null : withCampaign.length / total;
     let status: Status = "working";
     let fix = "Keep an original source on every closed-won deal.";
     if (total < minClosed) {
@@ -841,15 +839,15 @@ export const checks: Record<string, CheckFn> = {
     }
     const campaign = campaignRead(rule, snapshot);
     if (campaign.fix) fix = `${fix} ${campaign.fix}`;
+    fix = `${fix} Deals with no associated contact or company show as unsourced, because HubSpot inherits the original source from them.`;
     const sources = [...new Set(sourced.map((deal) => sanitizePortalName(deal.originalSource ?? "")).filter((name) => name.length > 0))].sort();
     const shareText = sourceShare === null ? "not calculated" : sourceShare.toFixed(2);
-    const campaignText = campaignShare === null ? "not calculated" : campaignShare.toFixed(2);
     const sentences = [
       `${sourced.length} of ${total} sampled closed-won deals have an original source (share ${shareText}).`,
     ];
     if (sources.length > 0) sentences.push(`Sources: ${sources.join(", ")}.`);
     sentences.push(`By pipeline: ${pipelineCounts(closed, snapshot)}.`);
-    sentences.push(`Campaign share ${campaignText} (floor ${minCampaign.toFixed(2)}, evidence only).`);
+    sentences.push(`Campaign property set on ${withCampaign.length} of ${total} sampled closed-won deals, where present (evidence only).`);
     if (campaign.note) sentences.push(campaign.note);
     sentences.push("Ad spend needs_operator_confirmation.");
     return finding(rule, status, sentences.join(" "), fix);

@@ -14,7 +14,6 @@ interface Page<T> {
 interface RawObject {
   id: string;
   properties?: Record<string, string | null>;
-  associations?: { contacts?: { results?: { id?: string }[] } };
 }
 
 interface RawCampaign {
@@ -132,30 +131,15 @@ function optionalText(value: string | null | undefined): string | null {
   return text.length > 0 ? text : null;
 }
 
-function amountFrom(value: string | null | undefined): number | null {
-  if (value == null || value.trim() === "") return null;
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : null;
-}
-
 function closedWonFlag(value: string | null | undefined): boolean | undefined {
   if (value === "true") return true;
   if (value === "false") return false;
   return undefined;
 }
 
-function contactCountFrom(deal: RawObject): number {
-  const ids = new Set(
-    (deal.associations?.contacts?.results ?? [])
-      .map((item) => item.id?.trim() ?? "")
-      .filter((id) => id.length > 0),
-  );
-  return ids.size;
-}
-
 const CAMPAIGN_LIST = "/marketing/v3/campaigns?limit=100&properties=hs_name";
 const CAMPAIGN_ID = /^[A-Za-z0-9-]+$/;
-const DEAL_READ = "/crm/v3/objects/deals?properties=pipeline,dealstage,hs_lastmodifieddate,amount,closedate,hs_is_closed_won,hs_analytics_source,hs_analytics_source_data_1,hs_campaign&associations=contacts";
+const DEAL_READ = "/crm/v3/objects/deals?properties=pipeline,dealstage,hs_lastmodifieddate,hs_is_closed_won,hs_analytics_source,hs_campaign";
 
 async function loadCampaigns(client: HubSpotReadClient, gaps: FetchGap[]): Promise<CampaignRecord[] | undefined> {
   const page = await tryGet<Page<RawCampaign>>(client, CAMPAIGN_LIST, "campaigns", gaps);
@@ -491,11 +475,9 @@ export async function loadPortal(
       pipelineId: deal.properties?.pipeline ?? "",
       stageId: deal.properties?.dealstage ?? "",
       daysSinceUpdate: daysSince(deal.properties?.hs_lastmodifieddate),
-      amount: amountFrom(deal.properties?.amount),
       isClosedWon: closedWonFlag(deal.properties?.hs_is_closed_won),
       originalSource: optionalText(deal.properties?.hs_analytics_source),
       campaignId: optionalText(deal.properties?.hs_campaign),
-      contactCount: contactCountFrom(deal),
     })),
     campaigns,
     forms: forms.map((form) => mapForm(form, [html, ...landingPages.map((page) => page.html)].filter(Boolean).join("\n") || null)),

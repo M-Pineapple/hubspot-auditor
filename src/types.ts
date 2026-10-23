@@ -78,12 +78,10 @@ export interface Deal {
   pipelineId: string;
   stageId: string;
   daysSinceUpdate: number;
-  amount?: number | null;
   /** True or false when `hs_is_closed_won` was read. Absent when the property was not returned. */
   isClosedWon?: boolean;
   originalSource?: string | null;
   campaignId?: string | null;
-  contactCount?: number;
 }
 
 export interface CampaignRecord {
