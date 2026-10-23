@@ -24,7 +24,7 @@ interface RawProperty {
 interface RawStage {
   id: string;
   label: string;
-  metadata?: { probability?: string };
+  metadata?: { probability?: string; isClosed?: string | boolean };
   requiredProperties?: string[];
 }
 
@@ -364,6 +364,9 @@ export async function loadPortal(
       id: stage.id,
       label: stage.label,
       probability: stage.metadata?.probability ? Number(stage.metadata.probability) * 100 : null,
+      isClosed: stage.metadata?.isClosed === true || stage.metadata?.isClosed === "true" ? true
+        : stage.metadata?.isClosed === false || stage.metadata?.isClosed === "false" ? false
+        : undefined,
       requiredProperties: stage.requiredProperties ?? [],
     })),
     automatedStageIds: [] as string[],
