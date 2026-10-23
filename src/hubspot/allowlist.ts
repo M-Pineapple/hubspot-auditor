@@ -22,6 +22,8 @@ export const ALLOWED_REQUESTS: AllowedRequest[] = [
   { method: GET, pattern: /^\/cms\/v3\/pages\/landing-pages$/, purpose: "Landing pages" },
   { method: GET, pattern: /^\/cms\/v3\/pages\/site-pages$/, purpose: "Site pages" },
   { method: GET, pattern: /^\/marketing\/v3\/emails$/, purpose: "Marketing emails" },
+  { method: GET, pattern: /^\/marketing\/v3\/campaigns$/, purpose: "Marketing campaigns" },
+  { method: GET, pattern: new RegExp(`^/marketing/v3/campaigns/${id}/assets/AD_CAMPAIGN$`), purpose: "Campaign ad assets" },
   { method: GET, pattern: /^\/contacts\/v1\/lists$/, purpose: "Contact lists" },
   { method: GET, pattern: /^\/communication-preferences\/v3\/definitions$/, purpose: "Subscription types" },
   { method: GET, pattern: /^\/cms\/v3\/domains$/, purpose: "Domains" },

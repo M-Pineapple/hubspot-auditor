@@ -10,3 +10,10 @@ checks:
   - id: reporting.lifecycle-funnel
     title: Lifecycle funnel
     severity: high
+  - id: reporting.deal-attribution
+    title: Closed-won deal attribution
+    severity: high
+    params:
+      minClosedWon: 5
+      minSourceShare: 0.8
+      minCampaignShare: 0.5
