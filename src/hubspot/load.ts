@@ -1,4 +1,4 @@
-import type { FetchGap, FormDef, LandingPage, MarketingEmail, PortalSnapshot, Workflow } from "../types.ts";
+import type { CampaignRecord, FetchGap, FormDef, LandingPage, MarketingEmail, PortalSnapshot, Workflow } from "../types.ts";
 import { countRecentSubmissions, formProtection } from "./form-protection.ts";
 import { loadRules } from "../rules.ts";
 import { writeScopeNames } from "../checks.ts";
@@ -14,6 +14,12 @@ interface Page<T> {
 interface RawObject {
   id: string;
   properties?: Record<string, string | null>;
+}
+
+interface RawCampaign {
+  id: string;
+  name?: string;
+  properties?: { hs_name?: string | null };
 }
 
 interface RawProperty {
@@ -118,6 +124,52 @@ function emailPublished(raw: { isPublished?: boolean; state?: string; currentSta
   const state = String(raw.state ?? raw.currentState ?? "");
   if (/DRAFT|ARCHIVED/i.test(state)) return false;
   return /PUBLISH|AUTOMATED|SCHEDULED/i.test(state);
+}
+
+function optionalText(value: string | null | undefined): string | null {
+  const text = value?.trim() ?? "";
+  return text.length > 0 ? text : null;
+}
+
+function closedWonFlag(value: string | null | undefined): boolean | undefined {
+  if (value === "true") return true;
+  if (value === "false") return false;
+  return undefined;
+}
+
+const CAMPAIGN_LIST = "/marketing/v3/campaigns?limit=100&properties=hs_name";
+const CAMPAIGN_ID = /^[A-Za-z0-9-]+$/;
+const DEAL_READ = "/crm/v3/objects/deals?properties=pipeline,dealstage,hs_lastmodifieddate,hs_is_closed_won,hs_analytics_source,hs_campaign";
+
+async function loadCampaigns(client: HubSpotReadClient, gaps: FetchGap[]): Promise<CampaignRecord[] | undefined> {
+  const page = await tryGet<Page<RawCampaign>>(client, CAMPAIGN_LIST, "campaigns", gaps);
+  if (!page) return undefined;
+  const rows: CampaignRecord[] = [];
+  let assetsBlocked = false;
+  for (const campaign of (page.results ?? []).slice(0, 20)) {
+    if (!campaign.id || !CAMPAIGN_ID.test(campaign.id)) continue;
+    const name = optionalText(campaign.properties?.hs_name) ?? optionalText(campaign.name) ?? "unnamed campaign";
+    if (assetsBlocked) {
+      rows.push({ id: campaign.id, name, adAssetCount: 0 });
+      continue;
+    }
+    try {
+      const assets = await client.get<Page<{ id?: string }>>(
+        `/marketing/v3/campaigns/${campaign.id}/assets/AD_CAMPAIGN?limit=100`,
+      );
+      rows.push({ id: campaign.id, name, adAssetCount: assets.results?.length ?? 0 });
+    } catch (error) {
+      assetsBlocked = true;
+      if (!gaps.some((gap) => gap.area === "campaign-assets")) {
+        gaps.push({
+          area: "campaign-assets",
+          path: `/marketing/v3/campaigns/${campaign.id}/assets/AD_CAMPAIGN`,
+          status: (error as { status?: number }).status ?? 0,
+        });
+      }
+    }
+  }
+  return rows;
 }
 
 function daysSince(value: string | null | undefined): number {
@@ -244,12 +296,8 @@ export async function loadPortal(
   const properties = await tryGet<{ results?: RawProperty[] }>(client, "/crm/v3/properties/contacts", "properties", gaps);
   const dealPipelines = await tryGet<{ results?: RawPipeline[] }>(client, "/crm/v3/pipelines/deals", "pipelines-deals", gaps);
   const ticketPipelines = await tryGet<{ results?: RawPipeline[] }>(client, "/crm/v3/pipelines/tickets", "pipelines-tickets", gaps);
-  const deals = await listAll<RawObject>(
-    client,
-    "/crm/v3/objects/deals?properties=pipeline,dealstage,hs_lastmodifieddate",
-    "deals",
-    gaps,
-  );
+  const deals = await listAll<RawObject>(client, DEAL_READ, "deals", gaps);
+  const campaigns = await loadCampaigns(client, gaps);
   const formList = await tryGet<{ results?: RawForm[] }>(client, "/marketing/v3/forms", "forms", gaps);
   const forms: RawForm[] = [];
   for (const form of (formList?.results ?? []).slice(0, 30)) {
@@ -427,7 +475,11 @@ export async function loadPortal(
       pipelineId: deal.properties?.pipeline ?? "",
       stageId: deal.properties?.dealstage ?? "",
       daysSinceUpdate: daysSince(deal.properties?.hs_lastmodifieddate),
+      isClosedWon: closedWonFlag(deal.properties?.hs_is_closed_won),
+      originalSource: optionalText(deal.properties?.hs_analytics_source),
+      campaignId: optionalText(deal.properties?.hs_campaign),
     })),
+    campaigns,
     forms: forms.map((form) => mapForm(form, [html, ...landingPages.map((page) => page.html)].filter(Boolean).join("\n") || null)),
     tracking: {
       publicSiteUrl: siteUrl ?? null,

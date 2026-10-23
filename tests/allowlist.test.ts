@@ -75,6 +75,48 @@ function scopeRule() {
   return item;
 }
 
+const ATTRIBUTION_DEALS = "/crm/v3/objects/deals?properties=pipeline,dealstage,hs_lastmodifieddate,hs_is_closed_won,hs_analytics_source,hs_campaign";
+const CAMPAIGN_GUID = "11111111-2222-4333-8444-555555555555";
+
+test("the deals attribution query stays allowlisted", async () => {
+  let calls = 0;
+  const client = new HubSpotReadClient(NA_TOKEN, async () => {
+    calls += 1;
+    return Response.json({ results: [] });
+  });
+  await client.get(ATTRIBUTION_DEALS);
+  assert.equal(calls, 1);
+});
+
+test("campaign list and ad-campaign assets are allowlisted", async () => {
+  let calls = 0;
+  const client = new HubSpotReadClient(NA_TOKEN, async () => {
+    calls += 1;
+    return Response.json({ results: [] });
+  });
+  await client.get("/marketing/v3/campaigns?limit=100&properties=hs_name");
+  await client.get(`/marketing/v3/campaigns/${CAMPAIGN_GUID}/assets/AD_CAMPAIGN?limit=100`);
+  assert.equal(calls, 2);
+});
+
+test("campaign detail, other asset types, and dot-dot paths stay refused", async () => {
+  let calls = 0;
+  const client = new HubSpotReadClient(NA_TOKEN, async () => {
+    calls += 1;
+    return Response.json({});
+  });
+  for (const path of [
+    `/marketing/v3/campaigns/${CAMPAIGN_GUID}/assets/EMAIL`,
+    `/marketing/v3/campaigns/${CAMPAIGN_GUID}`,
+    "/marketing/v3/campaigns/../campaigns",
+    `/marketing/v3/campaigns/${CAMPAIGN_GUID}/assets/../AD_CAMPAIGN`,
+    "/crm/v3/properties/deals",
+  ]) {
+    await assert.rejects(client.get(path), ReadOnlyError, path);
+  }
+  assert.equal(calls, 0);
+});
+
 test("unknown HubSpot paths are refused before fetch", async () => {
   let calls = 0;
   const client = new HubSpotReadClient(NA_TOKEN, async () => {
@@ -150,6 +192,8 @@ test("an EU token-info 404 still completes and reports the scope check as missin
   const stderr: string[] = [];
   const portal = await loadPortal(EU_TOKEN, undefined, capture(seen, null, 404), (chunk) => stderr.push(chunk));
   assert.equal(seen.filter((item) => item.method === "POST").length, 1);
+  assert.equal(seen[0]?.method, "POST");
+  assert.equal(seen[0]?.authorization, `Bearer ${EU_TOKEN}`);
   assert.equal(portal.tokenScopes?.status, 404);
   assert.equal(portal.tokenScopes?.scopes, null);
   const finding = runCheck(scopeRule(), portal);

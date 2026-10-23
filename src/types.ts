@@ -78,6 +78,16 @@ export interface Deal {
   pipelineId: string;
   stageId: string;
   daysSinceUpdate: number;
+  /** True or false when `hs_is_closed_won` was read. Absent when the property was not returned. */
+  isClosedWon?: boolean;
+  originalSource?: string | null;
+  campaignId?: string | null;
+}
+
+export interface CampaignRecord {
+  id: string;
+  name: string;
+  adAssetCount: number;
 }
 
 export interface FormDef {
@@ -194,6 +204,7 @@ export interface PortalSnapshot {
   properties: PropertyDef[];
   pipelines: Pipeline[];
   deals: Deal[];
+  campaigns?: CampaignRecord[];
   forms: FormDef[];
   tracking: Tracking;
   workflows: Workflow[];

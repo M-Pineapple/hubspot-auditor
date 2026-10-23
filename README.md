@@ -84,7 +84,7 @@ Rules live in versioned YAML under `rules/`. Each file has `version: 1` and a li
 | Tracking | Tracking code on a public URL, cookie banner, UTM capture, original source |
 | Email | Workflow health, nurture sequence, unengaged contacts, SPF, DKIM, and DMARC, subscription type on each published email |
 | Integrations | Connected apps, webhook subscriptions, sync errors, token scopes |
-| Reporting | Dashboards, attribution reports, lifecycle funnel |
+| Reporting | Dashboards, attribution reports, lifecycle funnel, closed-won deal attribution |
 | Brand | Published landing pages, title and meta description, tracking script, call to action, logo, favicon, heading, colour palette, optional extra phrases |
 | Journey | A published email or active workflow for each buyer stage you list |
 | Program | Dynamic lists, lead score, email subscription types, campaign links, record owners |
@@ -98,6 +98,8 @@ Findings are ordered by the business process they affect, then by severity. A si
 The score is the percentage of checks that are working. A check that needs operator confirmation is not a pass. The 30-day plan is critical and high broken items. The 60-day plan is medium broken items, plus critical and high missing items, plus critical and high checks that need confirmation. The 90-day plan is what remains. Each plan item names an owner role and a retest.
 
 These checks stay at `needs_operator_confirmation` on a pass until you set `params.operatorConfirmed: true` for that check: required properties, lifecycle and lead status, stage probabilities, stale deals, required stage fields, and stage automation. The flag means you accept the rule in the YAML. It does not change the portal. A broken or missing result is unchanged.
+
+Closed-won deal attribution counts a deal when `hs_is_closed_won` is the string true. When that property is absent, a closed stage at probability 100 counts, and so does probability 100 when the stage has no closed flag. Fewer than five sampled closed-won deals is missing. An original-source share below 0.80 is broken. Where the campaign property is present, the count of deals with a value is evidence only and does not change the status. Ad spend is always `needs_operator_confirmation`. Evidence states the sample size and leaves out deal names, amounts, contacts, and ids.
 
 Live mode reads the private app token's scopes at start-up, then reads HubSpot with allowlisted GET requests. If a call is forbidden or the payload has no field for that check, the finding is `missing`. A failed ticket-pipeline read does not hide the deal pipeline. Fill rates count only contact properties that were requested. Demo mode loads `demo/portal.json`, a fictional company called Harbour Glass Co.
 
@@ -116,7 +118,7 @@ You: "Run the Harbour Glass demo and tell me the score."
 
 The server calls `run_audit` with `demo: true`.
 
-You get a score of 32, with 15 working, 21 broken, 11 missing, and 0 that need operator confirmation. The first 30-day items are required properties, workflow health, and form field mapping. Spam protection is also in that plan, after the higher-impact faults.
+You get a score of 33, with 16 working, 21 broken, 11 missing, and 0 that need operator confirmation. The first 30-day items are required properties, workflow health, and form field mapping. Spam protection is also in that plan, after the higher-impact faults.
 
 ## Setup
 
@@ -158,7 +160,8 @@ No write scope is required. A missing read scope becomes a `missing` finding for
 | Contacts | `crm.objects.contacts.read` | Duplicates, lifecycle, original source |
 | Contact properties | `crm.schemas.contacts.read` | Required fields, unused properties, lead score |
 | Companies | `crm.objects.companies.read` | Duplicate domains |
-| Deals and deal pipelines | `crm.objects.deals.read` | Stale deals, stage probabilities |
+| Deals and deal pipelines | `crm.objects.deals.read` | Stale deals, stage probabilities, closed-won attribution |
+| Campaigns (optional) | `marketing.campaigns.read` | Campaign names and ad-campaign asset counts. Source share still runs when this scope is missing |
 | Ticket pipelines | `crm.objects.tickets.read` | Ticket pipeline |
 | Owners | `crm.objects.owners.read` | Record owners |
 | Lists | `crm.lists.read` | Dynamic lists |
@@ -169,7 +172,7 @@ No write scope is required. A missing read scope becomes a `missing` finding for
 
 ### Sampling
 
-Each of contacts, companies, and deals is read up to 500 records (5 pages of 100). Form detail is read for up to 30 forms. Published pages are read for up to 20 pages for tracking. The results describe that sample, not the whole portal.
+Each of contacts, companies, and deals is read up to 500 records (5 pages of 100). Form detail is read for up to 30 forms. Published pages are read for up to 20 pages for tracking. Campaigns are one page of up to 100. Ad-campaign assets are read for at most 20 of those campaigns. The results describe that sample, not the whole portal.
 
 The audit does not call webhook subscription edits or a connected-app list. Those HubSpot URLs do not return that data for a private app.
 
@@ -220,7 +223,7 @@ Use the official server when you want an agent to work in the CRM. Use this serv
 
 The full fictional report is [examples/example-report.md](examples/example-report.md). The JSON form is [examples/example-report.json](examples/example-report.json). The PDF is [examples/example-report.pdf](examples/example-report.pdf).
 
-The checked-in sample scores **30** (14 working, 21 broken, 11 missing, and none need operator confirmation). A fresh demo scores 32, with 15 working, because the token-scope check passes. The public demo form has no captcha and 12 submissions in 30 days, so spam protection is critical. On this sample the passes that would need confirmation are already broken or missing.
+The checked-in sample scores **30** (14 working, 21 broken, 11 missing, and none need operator confirmation). A fresh demo scores 33, with 16 working, because the token-scope check passes and closed-won attribution passes on the sample. The public demo form has no captcha and 12 submissions in 30 days, so spam protection is critical. On this sample the passes that would need confirmation are already broken or missing.
 
 ```markdown
 # HubSpot audit: Harbour Glass Co

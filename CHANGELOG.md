@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - A start-up check reads the private app token scopes and warns when a write scope is present. HubSpot requests are limited to a GET allowlist plus that one token-info POST.
+- Closed-won deal attribution reports the original-source share for sampled deals. The campaign list and ad-campaign asset reads are allowlisted GETs and need the optional `marketing.campaigns.read` scope. Ad spend stays `needs_operator_confirmation`.
 
 ### Changed
 

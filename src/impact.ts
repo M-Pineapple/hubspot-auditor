@@ -260,6 +260,11 @@ export const checkMeta: Record<string, CheckMeta> = {
     ownerRole: "RevOps",
     retest: "Compare the funnel stage names with the lifecycle property and confirm they match.",
   },
+  "reporting.deal-attribution": {
+    process: "reporting",
+    ownerRole: "Marketing ops",
+    retest: "Open five closed-won deals and confirm each original source, then rerun the audit.",
+  },
   "brand.published-pages": {
     process: "conversion",
     ownerRole: "Marketing ops",

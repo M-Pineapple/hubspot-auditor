@@ -1,6 +1,6 @@
 import { applyPropertyImpact, checkMeta, CONFIRM_NOTE, namesByImpact } from "./impact.ts";
 import { severityForSpamRank, spamExposureRank } from "./hubspot/form-protection.ts";
-import type { CheckRule, Finding, FormDef, PortalSnapshot, Severity, Status } from "./types.ts";
+import type { CheckRule, Deal, Finding, FormDef, PortalSnapshot, Severity, Status } from "./types.ts";
 
 export interface CheckContext {
   snapshot: PortalSnapshot;
@@ -134,6 +134,53 @@ export function writeScopeNames(scopes: string[], params: Record<string, unknown
 function broadScopeNames(scopes: string[], params: Record<string, unknown>): string[] {
   const exact = new Set(strList(params, "broadScopes").map((item) => item.toLowerCase()));
   return scopes.filter((scope) => exact.has(scope.toLowerCase()));
+}
+
+/** Closed won: explicit closed metadata at 100%, or probability 100 when that metadata is absent. */
+export function isClosedWonStage(stage: { isClosed?: boolean; probability: number | null }): boolean {
+  if (stage.isClosed === undefined) return stage.probability === 100;
+  return stage.isClosed === true && stage.probability === 100;
+}
+
+function closedStageSkipsProbabilityFloor(stage: { isClosed?: boolean; probability: number | null }): boolean {
+  if (stage.isClosed === true) return true;
+  if (stage.isClosed === false) return false;
+  return stage.probability === 0 || isClosedWonStage(stage);
+}
+
+function dealIsClosedWon(deal: Deal, snapshot: PortalSnapshot): boolean {
+  if (deal.isClosedWon === true) return true;
+  if (deal.isClosedWon === false) return false;
+  const pipeline = snapshot.pipelines.find((item) => item.objectType === "deals" && item.id === deal.pipelineId);
+  const stage = pipeline?.stages.find((item) => item.id === deal.stageId);
+  if (!stage) return false;
+  return isClosedWonStage(stage);
+}
+
+function pipelineCounts(deals: Deal[], snapshot: PortalSnapshot): string {
+  if (deals.length === 0) return "none";
+  const counts = new Map<string, number>();
+  for (const deal of deals) {
+    const pipeline = snapshot.pipelines.find((item) => item.id === deal.pipelineId);
+    const label = sanitizePortalName(pipeline?.label ?? "") || "unnamed pipeline";
+    counts.set(label, (counts.get(label) ?? 0) + 1);
+  }
+  return [...counts.entries()]
+    .sort((left, right) => left[0].localeCompare(right[0]))
+    .map(([label, count]) => `${label} ${count}`)
+    .join(", ");
+}
+
+const CAMPAIGN_SCOPE_FIX = "Grant the optional marketing.campaigns.read scope and run the audit again.";
+
+function campaignRead(rule: CheckRule, snapshot: PortalSnapshot): { note: string; fix: string | null } {
+  const gap = blockedFinding(rule, snapshot, "campaigns", CAMPAIGN_SCOPE_FIX)
+    ?? blockedFinding(rule, snapshot, "campaign-assets", CAMPAIGN_SCOPE_FIX);
+  if (gap) return { note: `Campaign part: missing. ${gap.evidence}`, fix: gap.recommendedFix };
+  const hints = (snapshot.campaigns ?? [])
+    .filter((campaign) => campaign.adAssetCount > 0)
+    .map((campaign) => `${sanitizePortalName(campaign.name) || "unnamed campaign"} ${campaign.adAssetCount}`);
+  return { note: hints.length > 0 ? `Ad assets: ${hints.join(", ")}.` : "", fix: null };
 }
 
 export const checks: Record<string, CheckFn> = {
@@ -279,7 +326,7 @@ export const checks: Record<string, CheckFn> = {
       pipeline.stages.forEach((stage, index) => {
         if (index === 0) return;
         // Prefer explicit stage metadata; older snapshots may only have probabilities.
-        if (stage.isClosed ?? (stage.probability === 0 || stage.probability === 100)) return;
+        if (closedStageSkipsProbabilityFloor(stage)) return;
         if (stage.probability === null || stage.probability < floor) weak.push(stage.label);
       });
     }
@@ -769,6 +816,41 @@ export const checks: Record<string, CheckFn> = {
       return finding(rule, "missing", "Sampled contacts use only one lifecycle stage.", "Move contacts through the stages so a funnel can be read.");
     }
     return finding(rule, "missing", "No lifecycle funnel report was returned.", "Build a funnel from subscriber to customer.");
+  },
+
+  "reporting.deal-attribution": ({ snapshot, rule }) => {
+    const blocked = blockedFinding(rule, snapshot, "deals", "Grant the read scope for deals and run the audit again.");
+    if (blocked) return blocked;
+    const closed = snapshot.deals.filter((deal) => dealIsClosedWon(deal, snapshot));
+    const total = closed.length;
+    const sourced = closed.filter((deal) => (deal.originalSource ?? "").trim() !== "");
+    const withCampaign = closed.filter((deal) => (deal.campaignId ?? "").trim() !== "");
+    const minClosed = num(rule.params, "minClosedWon", 5);
+    const minSource = num(rule.params, "minSourceShare", 0.8);
+    const sourceShare = total === 0 ? null : sourced.length / total;
+    let status: Status = "working";
+    let fix = "Keep an original source on every closed-won deal.";
+    if (total < minClosed) {
+      status = "missing";
+      fix = "Sample at least five closed-won deals before judging original source.";
+    } else if (sourceShare !== null && sourceShare < minSource) {
+      status = "broken";
+      fix = "Set an original source on closed-won deals that do not have one.";
+    }
+    const campaign = campaignRead(rule, snapshot);
+    if (campaign.fix) fix = `${fix} ${campaign.fix}`;
+    fix = `${fix} Deals with no associated contact or company show as unsourced, because HubSpot inherits the original source from them.`;
+    const sources = [...new Set(sourced.map((deal) => sanitizePortalName(deal.originalSource ?? "")).filter((name) => name.length > 0))].sort();
+    const shareText = sourceShare === null ? "not calculated" : sourceShare.toFixed(2);
+    const sentences = [
+      `${sourced.length} of ${total} sampled closed-won deals have an original source (share ${shareText}).`,
+    ];
+    if (sources.length > 0) sentences.push(`Sources: ${sources.join(", ")}.`);
+    sentences.push(`By pipeline: ${pipelineCounts(closed, snapshot)}.`);
+    sentences.push(`Campaign property set on ${withCampaign.length} of ${total} sampled closed-won deals, where present (evidence only).`);
+    if (campaign.note) sentences.push(campaign.note);
+    sentences.push("Ad spend needs_operator_confirmation.");
+    return finding(rule, status, sentences.join(" "), fix);
   },
 
   "brand.published-pages": ({ snapshot, rule }) => {

@@ -25,7 +25,9 @@
       "label": "Sales",
       "stages": [
         {"id": "new", "label": "New", "probability": 10, "requiredProperties": ["dealname"]},
-        {"id": "quote", "label": "Quote", "probability": 20, "requiredProperties": ["dealname"]}
+        {"id": "quote", "label": "Quote", "probability": 20, "requiredProperties": ["dealname"]},
+        {"id": "won", "label": "Closed won", "probability": 100, "isClosed": true, "requiredProperties": ["dealname"]},
+        {"id": "lost", "label": "Closed lost", "probability": 0, "isClosed": true, "requiredProperties": ["dealname"]}
       ],
       "automatedStageIds": [],
       "automationKnown": true
@@ -43,7 +45,16 @@
   ],
   "deals": [
     {"id": "d1", "pipelineId": "deals-main", "stageId": "new", "daysSinceUpdate": 45},
-    {"id": "d2", "pipelineId": "deals-main", "stageId": "quote", "daysSinceUpdate": 3}
+    {"id": "d2", "pipelineId": "deals-main", "stageId": "quote", "daysSinceUpdate": 3},
+    {"id": "d3", "pipelineId": "deals-main", "stageId": "won", "daysSinceUpdate": 2, "isClosedWon": true, "originalSource": "ORGANIC_SEARCH", "campaignId": "camp-spring"},
+    {"id": "d4", "pipelineId": "deals-main", "stageId": "won", "daysSinceUpdate": 4, "isClosedWon": true, "originalSource": "PAID_SEARCH", "campaignId": "camp-spring"},
+    {"id": "d5", "pipelineId": "deals-main", "stageId": "won", "daysSinceUpdate": 1, "isClosedWon": true, "originalSource": "ORGANIC_SEARCH", "campaignId": "camp-kiln"},
+    {"id": "d6", "pipelineId": "deals-main", "stageId": "won", "daysSinceUpdate": 6, "isClosedWon": true, "originalSource": "REFERRALS", "campaignId": "camp-spring"},
+    {"id": "d7", "pipelineId": "deals-main", "stageId": "won", "daysSinceUpdate": 3, "isClosedWon": true, "originalSource": "DIRECT_TRAFFIC", "campaignId": null}
+  ],
+  "campaigns": [
+    {"id": "camp-spring", "name": "Spring studio tour", "adAssetCount": 2},
+    {"id": "camp-kiln", "name": "Kiln open day", "adAssetCount": 0}
   ],
   "forms": [
     {"id": "f1", "name": "Demo request", "archived": false, "embedded": true, "unmappedFields": 1, "gdprConsent": false, "followUpEmail": false, "spamProtection": false, "recentSubmissions": 12, "submissionsCapped": false},
