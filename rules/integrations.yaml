@@ -10,3 +10,10 @@ checks:
   - id: integrations.sync-errors
     title: Sync errors
     severity: high
+  - id: integrations.token-scopes
+    title: Token scopes
+    severity: high
+    params:
+      writeSuffixes: [".write", ".delete", ".publish"]
+      writeScopes: ["crm.import", "timeline", "transactional-email", "social", "e-commerce", "files", "hubdb"]
+      broadScopes: ["content", "forms", "automation"]

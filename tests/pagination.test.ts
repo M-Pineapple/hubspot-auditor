@@ -8,8 +8,10 @@ import { rule } from "./helpers.ts";
 async function portalWithPages(area: string, failure?: number) {
   const calls: string[] = [];
   const portal = await loadPortal("fixture-token", undefined, async (input, init) => {
-    assert.equal(init?.method, "GET");
     const url = new URL(String(input));
+    const tokenInfo = url.pathname === "/oauth/v2/private-apps/get/access-token-info";
+    assert.ok(init?.method === "GET" || (init?.method === "POST" && tokenInfo));
+    if (tokenInfo) return Response.json({ scopes: ["crm.objects.contacts.read"] });
     calls.push(url.pathname + url.search);
     if (url.pathname.startsWith("/crm/v3/objects/")) {
       const object = url.pathname.split("/").at(-1);

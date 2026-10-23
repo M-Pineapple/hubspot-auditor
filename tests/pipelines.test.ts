@@ -42,8 +42,11 @@ test("the default HubSpot pipeline does not fail on Closed Lost at zero probabil
   const labels = ["Appointment scheduled", "Qualified to buy", "Presentation scheduled",
     "Decision maker bought-in", "Contract sent", "Closed won", "Closed lost"];
   const loaded = await loadPortal("fixture-token", undefined, async (input, init) => {
-    assert.equal(init?.method, "GET");
-    if (new URL(String(input)).pathname === "/crm/v3/pipelines/deals") {
+    const url = new URL(String(input));
+    const tokenInfo = url.pathname === "/oauth/v2/private-apps/get/access-token-info";
+    assert.ok(init?.method === "GET" || (init?.method === "POST" && tokenInfo));
+    if (tokenInfo) return Response.json({ scopes: ["crm.objects.deals.read"] });
+    if (url.pathname === "/crm/v3/pipelines/deals") {
       return Response.json({ results: [{
         id: "default", label: "Sales Pipeline",
         stages: probabilities.map((probability, index) => ({

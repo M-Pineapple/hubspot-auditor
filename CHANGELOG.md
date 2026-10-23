@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- A start-up check reads the private app token scopes and warns when a write scope is present. HubSpot requests are limited to a GET allowlist plus that one token-info POST.
+
+### Changed
+
+- The README states the sample sizes for contacts, companies, deals, forms, and pages.
+
 ### Fixed
 
 - Failed later pages of contacts, companies, or deals now produce missing findings with the incomplete sample and read error identified. Contact-based property, tracking, scoring, and funnel checks also honour contact read failures.
