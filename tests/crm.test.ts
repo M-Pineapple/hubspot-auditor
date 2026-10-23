@@ -111,21 +111,62 @@ test("crm judges unused custom properties only from sampled contacts", () => {
   assert.match(unused.evidence, /1 custom property name\(s\) have no values: measured/);
 });
 
-test("crm does not treat an unsampled property as empty", () => {
+test("crm cannot pass required properties with absent or unsampled fields", () => {
+  const email = { objectType: "contacts" as const, name: "email", label: "Email", custom: false, required: true, filledCount: 4, totalCount: 4 };
+  for (const extra of [
+    [],
+    [{ ...email, name: "firstname", filledCount: null }],
+    [{ ...email, name: "firstname", filledCount: 0, totalCount: 0 }],
+  ]) {
+    for (const operatorConfirmed of [false, true]) {
+      const portal = snapshot({ properties: [email, ...extra] });
+      const result = runCheck(
+        rule("crm.missing-required-properties", "crm", { names: ["email", "firstname"], operatorConfirmed }),
+        portal,
+      );
+      assert.equal(result.status, "missing");
+      assert.match(result.evidence, /could not be assessed: firstname/);
+      assert.match(result.recommendedFix, /contact read/);
+      if (extra.length > 0) {
+        const fallback = runCheck(rule("crm.missing-required-properties", "crm", { operatorConfirmed }), portal);
+        assert.equal(fallback.status, "missing");
+        assert.match(fallback.evidence, /could not be assessed: firstname/);
+      }
+    }
+  }
+});
+
+test("crm retains measured fill-rate failures while disclosing required coverage gaps", () => {
   const portal = snapshot({
     properties: [
-      { objectType: "contacts", name: "email", label: "Email", custom: false, required: true, filledCount: 4, totalCount: 4 },
+      { objectType: "contacts", name: "email", label: "Email", custom: false, required: true, filledCount: 1, totalCount: 4 },
       { objectType: "contacts", name: "firstname", label: "First name", custom: false, required: true, filledCount: null, totalCount: 4 },
     ],
   });
-  const filled = runCheck(rule("crm.missing-required-properties", "crm", { names: ["email", "firstname"], minFillRatio: 0.9 }), portal);
-  assert.equal(filled.status, "needs_operator_confirmation");
-  assert.match(filled.evidence, /read-only token cannot confirm/);
-  const accepted = runCheck(
-    rule("crm.missing-required-properties", "crm", { names: ["email", "firstname"], minFillRatio: 0.9, operatorConfirmed: true }),
+  const result = runCheck(
+    rule("crm.missing-required-properties", "crm", { names: ["email", "firstname"], operatorConfirmed: true }),
     portal,
   );
-  assert.equal(accepted.status, "working");
+  assert.equal(result.status, "broken");
+  assert.match(result.evidence, /below the fill ratio: email/);
+  assert.match(result.evidence, /could not be assessed: firstname/);
+  assert.match(result.recommendedFix, /backfill/);
+  assert.match(result.recommendedFix, /contact read/);
+});
+
+test("crm requires operator confirmation only after all required properties are sampled", () => {
+  const portal = snapshot({ properties: [
+    { objectType: "contacts", name: "email", label: "Email", custom: false, required: true, filledCount: 4, totalCount: 4 },
+    { objectType: "contacts", name: "firstname", label: "First name", custom: false, required: true, filledCount: 4, totalCount: 4 },
+    { objectType: "contacts", name: "optional", label: "Optional", custom: true, required: false, filledCount: null, totalCount: 4 },
+  ] });
+  for (const names of [[], ["email", "firstname"]]) {
+    const unconfirmed = runCheck(rule("crm.missing-required-properties", "crm", { names }), portal);
+    assert.equal(unconfirmed.status, "needs_operator_confirmation");
+    const confirmed = runCheck(rule("crm.missing-required-properties", "crm", { names, operatorConfirmed: true }), portal);
+    assert.equal(confirmed.status, "working");
+    assert.doesNotMatch(confirmed.evidence, /could not be assessed/);
+  }
 });
 
 test("crm flags a conflicting lifecycle pair and does not pass a clean sample", () => {

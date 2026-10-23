@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Failed later pages of contacts, companies, or deals now produce missing findings with the incomplete sample and read error identified. Contact-based property, tracking, scoring, and funnel checks also honour contact read failures.
+- Required-property fill checks no longer pass when a required field is absent or unsampled, even after operator confirmation. Known fill-rate failures remain broken and identify any additional required fields that could not be assessed.
 - The deal-stage probability check excludes Closed Lost (0%) and Closed Won (100%), so the default HubSpot pipeline is not flagged for its correctly configured Closed Lost stage. Stage labels do not affect this classification.
 
 ## [1.5.1] - 2026-10-20

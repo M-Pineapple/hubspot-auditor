@@ -42,13 +42,15 @@ function finding(
 }
 
 function blockedFinding(rule: CheckRule, snapshot: PortalSnapshot, area: string, scopeFix: string): Finding | null {
-  const hit = snapshot.fetchGaps.find((item) => item.area === area);
+  const hit = snapshot.fetchGaps.find((item) => item.area === area)
+    ?? snapshot.fetchGaps.find((item) => item.area === `${area}-partial`);
   if (!hit) return null;
+  const readArea = hit.area === `${area}-partial` ? `${area} (incomplete sample; a later page failed)` : area;
   if (hit.status === 0) {
     return finding(
       rule,
       "missing",
-      `Could not reach the host for ${area} (${hit.path}). No HTTP response came back.`,
+      `Could not reach the host for ${readArea} (${hit.path}). No HTTP response came back.`,
       "Check DNS for api.hubapi.com and run the audit again.",
     );
   }
@@ -56,7 +58,7 @@ function blockedFinding(rule: CheckRule, snapshot: PortalSnapshot, area: string,
     return finding(
       rule,
       "missing",
-      `${area} was returned but is not mapped into the snapshot yet (${hit.path}).`,
+      `${readArea} was returned but is not mapped into the snapshot yet (${hit.path}).`,
       "Extend the loader for this response, or turn the check off.",
     );
   }
@@ -64,17 +66,17 @@ function blockedFinding(rule: CheckRule, snapshot: PortalSnapshot, area: string,
     return finding(
       rule,
       "missing",
-      `Could not read ${area} (${hit.path}, HTTP ${hit.status}) after retries.`,
+      `Could not read ${readArea} (${hit.path}, HTTP ${hit.status}) after retries.`,
       "Run the audit again. This was throttling or a HubSpot outage, not a missing scope.",
     );
   }
   if (hit.status === 401 || hit.status === 403) {
-    return finding(rule, "missing", `Could not read ${area} (${hit.path}, HTTP ${hit.status}).`, scopeFix);
+    return finding(rule, "missing", `Could not read ${readArea} (${hit.path}, HTTP ${hit.status}).`, scopeFix);
   }
   return finding(
     rule,
     "missing",
-    `Could not read ${area} (${hit.path}, HTTP ${hit.status}).`,
+    `Could not read ${readArea} (${hit.path}, HTTP ${hit.status}).`,
     "Confirm this read endpoint exists for the portal, then run the audit again.",
   );
 }
@@ -164,18 +166,26 @@ export const checks: Record<string, CheckFn> = {
   },
 
   "crm.missing-required-properties": ({ snapshot, rule }) => {
-    const blocked = blockedFinding(rule, snapshot, "properties", "Grant the read scope for properties and run the audit again.");
+    const blocked = blockedFinding(rule, snapshot, "properties", "Grant the read scope for properties and run the audit again.")
+      ?? blockedFinding(rule, snapshot, "contacts", "Grant the read scope for contacts and run the audit again.");
     if (blocked) return blocked;
     const required = new Set(strList(rule.params, "names"));
-    const judged = snapshot.properties.filter((property) => {
-      if (required.size > 0 && !required.has(property.name)) return false;
-      if (required.size === 0 && !property.required) return false;
-      return property.filledCount !== null && property.totalCount > 0;
-    });
-    if (judged.length === 0) {
-      return finding(rule, "missing", "Required properties were not in the contact sample.", "Request those properties on the contact read and run the audit again.");
+    if (required.size === 0) {
+      for (const property of snapshot.properties) if (property.required) required.add(property.name);
     }
+    const judged = snapshot.properties.filter(
+      (property) => required.has(property.name) && property.filledCount !== null && property.totalCount > 0,
+    );
+    const assessed = new Set(judged.map((property) => property.name));
+    const unassessed = [...required].filter((name) => !assessed.has(name));
+    const coverageNote = unassessed.length > 0
+      ? ` Required properties could not be assessed: ${portalNameList(unassessed)}.`
+      : "";
+    const readFix = "Request those properties on the contact read and run the audit again.";
     const thin = judged.filter((property) => (property.filledCount ?? 0) / property.totalCount < num(rule.params, "minFillRatio", 0.9));
+    if (judged.length === 0 || (thin.length === 0 && unassessed.length > 0)) {
+      return finding(rule, "missing", `Required-property coverage is incomplete.${coverageNote}`, readFix);
+    }
     if (thin.length === 0) {
       return finding(rule, "working", "Required properties are filled on at least 90% of records.", "Keep required fields on create forms.");
     }
@@ -184,15 +194,16 @@ export const checks: Record<string, CheckFn> = {
       finding(
         rule,
         "broken",
-        `${thin.length} required property name(s) are below the fill ratio: ${portalNameList(ordered)}.`,
-        "Make the thin properties required on the create forms and backfill the blanks.",
+        `${thin.length} required property name(s) are below the fill ratio: ${portalNameList(ordered)}.${coverageNote}`,
+        `Make the thin properties required on the create forms and backfill the blanks.${unassessed.length > 0 ? ` ${readFix}` : ""}`,
       ),
       ordered,
     );
   },
 
   "crm.unused-custom-properties": ({ snapshot, rule }) => {
-    const blocked = blockedFinding(rule, snapshot, "properties", "Grant the read scope for properties and run the audit again.");
+    const blocked = blockedFinding(rule, snapshot, "properties", "Grant the read scope for properties and run the audit again.")
+      ?? blockedFinding(rule, snapshot, "contacts", "Grant the read scope for contacts and run the audit again.");
     if (blocked) return blocked;
     const sampled = snapshot.properties.filter(
       (property) => property.custom && property.filledCount !== null && property.totalCount > 0,
@@ -513,6 +524,8 @@ export const checks: Record<string, CheckFn> = {
   },
 
   "tracking.utm-capture": ({ snapshot, rule }) => {
+    const blocked = blockedFinding(rule, snapshot, "contacts", "Grant the read scope for contacts and run the audit again.");
+    if (blocked) return blocked;
     if (snapshot.tracking.utmTotal === 0) {
       return finding(rule, "missing", "No UTM properties were in the snapshot.", "Create utm_source, utm_medium, and utm_campaign properties.");
     }
@@ -529,6 +542,8 @@ export const checks: Record<string, CheckFn> = {
   },
 
   "tracking.original-source": ({ snapshot, rule }) => {
+    const blocked = blockedFinding(rule, snapshot, "contacts", "Grant the read scope for contacts and run the audit again.");
+    if (blocked) return blocked;
     if (snapshot.tracking.contactCount === 0) {
       return finding(rule, "missing", "No contacts were sampled for original source.", "Sample contacts with hs_analytics_source.");
     }
@@ -685,14 +700,16 @@ export const checks: Record<string, CheckFn> = {
   },
 
   "reporting.lifecycle-funnel": ({ snapshot, rule }) => {
+    const contactsBlocked = blockedFinding(rule, snapshot, "contacts", "Grant the read scope for contacts and run the audit again.");
     const stages = new Set(snapshot.contacts.map((contact) => contact.lifecycleStage?.trim()).filter((stage) => stage));
-    if (stages.size >= 2) {
+    if (!contactsBlocked && stages.size >= 2) {
       return finding(rule, "working", `The contact sample spans ${stages.size} lifecycle stages.`, "Use the same stage names on the funnel report.");
     }
     const reports = snapshot.reports.filter((report) => report.kind === "lifecycle-funnel");
     if (reports.length > 0) {
       return finding(rule, "working", `${reports.length} lifecycle funnel report(s) are present.`, "Use the same stage names as the CRM properties.");
     }
+    if (contactsBlocked) return contactsBlocked;
     const blocked = blockedFinding(rule, snapshot, "reports", "Grant the reporting read scope and run the audit again.");
     if (blocked && stages.size === 0) return blocked;
     if (stages.size === 1) {
@@ -825,7 +842,8 @@ export const checks: Record<string, CheckFn> = {
   },
 
   "program.lead-score": ({ snapshot, rule }) => {
-    const blocked = blockedFinding(rule, snapshot, "properties", "Grant the read scope for properties and run the audit again.");
+    const blocked = blockedFinding(rule, snapshot, "properties", "Grant the read scope for properties and run the audit again.")
+      ?? blockedFinding(rule, snapshot, "contacts", "Grant the read scope for contacts and run the audit again.");
     if (blocked) return blocked;
     const names = strList(rule.params, "names");
     const wanted = names.length > 0 ? names : ["hs_predictivecontactscore"];
