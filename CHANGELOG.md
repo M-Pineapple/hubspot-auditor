@@ -7,10 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.5.2] - 2026-10-23
+
 ### Added
 
-- A start-up check reads the private app token scopes and warns when a write scope is present. HubSpot requests are limited to a GET allowlist plus that one token-info POST.
-- Closed-won deal attribution reports the original-source share for sampled deals. The campaign list and ad-campaign asset reads are allowlisted GETs and need the optional `marketing.campaigns.read` scope. Ad spend stays `needs_operator_confirmation`.
+- A start-up check reads the private app token scopes and warns when a write scope is present. HubSpot requests are limited to a GET allowlist plus that one token-info POST. Closes [#37](https://github.com/M-Pineapple/hubspot-auditor/issues/37) ([#46](https://github.com/M-Pineapple/hubspot-auditor/pull/46)).
+- Closed-won deal attribution reports the original-source share for sampled deals. The campaign list and ad-campaign asset reads are allowlisted GETs and need the optional `marketing.campaigns.read` scope. Ad spend stays `needs_operator_confirmation`. Closes [#41](https://github.com/M-Pineapple/hubspot-auditor/issues/41) ([#47](https://github.com/M-Pineapple/hubspot-auditor/pull/47)).
 
 ### Changed
 
@@ -18,10 +20,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Failed later pages of contacts, companies, or deals now produce missing findings with the incomplete sample and read error identified. Contact-based property, tracking, scoring, and funnel checks also honour contact read failures.
-- Required-property fill checks no longer pass when a required field is absent or unsampled, even after operator confirmation. Known fill-rate failures remain broken and identify any additional required fields that could not be assessed.
-- The deal-stage probability check excludes Closed Lost (0%) and Closed Won (100%), so the default HubSpot pipeline is not flagged for its correctly configured Closed Lost stage. Stage labels do not affect this classification.
-- The deal-stage probability check now honours explicit `isClosed` metadata, so an open stage at 0% is still flagged. Stages without this metadata retain the 0%/100% fallback.
+- Failed later pages of contacts, companies, or deals now produce missing findings with the incomplete sample and read error identified. Contact-based property, tracking, scoring, and funnel checks also honour contact read failures. Thanks to [@harrisonoconnorhover](https://github.com/harrisonoconnorhover) for [#42](https://github.com/M-Pineapple/hubspot-auditor/pull/42).
+- Required-property fill checks no longer pass when a required field is absent or unsampled, even after operator confirmation. Known fill-rate failures remain broken and identify any additional required fields that could not be assessed. Thanks to [@harrisonoconnorhover](https://github.com/harrisonoconnorhover) for [#43](https://github.com/M-Pineapple/hubspot-auditor/pull/43).
+- The deal-stage probability check excludes Closed Lost (0%) and Closed Won (100%), so the default HubSpot pipeline is not flagged for its correctly configured Closed Lost stage. Stage labels do not affect this classification. Thanks to [@harrisonoconnorhover](https://github.com/harrisonoconnorhover) for [#44](https://github.com/M-Pineapple/hubspot-auditor/pull/44).
+- The deal-stage probability check now honours explicit `isClosed` metadata, so an open stage at 0% is still flagged. Stages without this metadata retain the 0%/100% fallback. Thanks to [@harrisonoconnorhover](https://github.com/harrisonoconnorhover) for [#45](https://github.com/M-Pineapple/hubspot-auditor/pull/45).
 
 ## [1.5.1] - 2026-10-20
 

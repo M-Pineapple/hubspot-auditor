@@ -2,11 +2,11 @@
 
 This report uses a fictional sample portal. It is not a customer account.
 
-Score: **30** (share of checks that are working). A check that needs operator confirmation is not a pass.
+Score: **33** (share of checks that are working). A check that needs operator confirmation is not a pass.
 
 | Status | Count |
 | --- | ---: |
-| Working | 14 |
+| Working | 16 |
 | Broken | 21 |
 | Missing | 11 |
 | Needs operator confirmation | 0 |
@@ -421,6 +421,14 @@ None.
 - Evidence: No extra phrases are configured. Logo, favicon, heading, and colour checks still run.
 - Fix: Add params.markers only for words that must appear verbatim.
 
+### Closed-won deal attribution
+
+- Severity: high
+- Process: reporting
+- Check: `reporting.deal-attribution`
+- Evidence: 5 of 5 sampled closed-won deals have an original source (share 1.00). Sources: DIRECT_TRAFFIC, ORGANIC_SEARCH, PAID_SEARCH, REFERRALS. By pipeline: Sales 5. Campaign property set on 4 of 5 sampled closed-won deals, where present (evidence only). Ad assets: Spring studio tour 2. Ad spend needs_operator_confirmation.
+- Fix: Keep an original source on every closed-won deal. Deals with no associated contact or company show as unsourced, because HubSpot inherits the original source from them.
+
 ### Lifecycle funnel
 
 - Severity: high
@@ -444,6 +452,14 @@ None.
 - Check: `pipelines.ticket-pipeline`
 - Evidence: 1 ticket pipeline(s) are defined.
 - Fix: Keep a closed stage and a required resolution field.
+
+### Token scopes
+
+- Severity: high
+- Process: data hygiene
+- Check: `integrations.token-scopes`
+- Evidence: The token has no write scope.
+- Fix: Keep the private app on read scopes.
 
 ### Connected apps
 

@@ -13,7 +13,9 @@
 
 Read-only audit of a HubSpot portal. You get a scored report of what works, what is broken, what is missing, and what still needs a person to confirm, plus a 30/60/90-day fix plan.
 
-The server speaks MCP over stdio. A CLI runs the same audit. It never sends POST, PUT, PATCH, or DELETE to HubSpot.
+The server speaks MCP over stdio. A CLI runs the same audit. It never sends PUT, PATCH, or DELETE to HubSpot. Its only POST is the start-up read of the token's own scopes.
+
+What's new in v1.5.2: a start-up check warns when the token has a write scope and every HubSpot request is held to a read-only allowlist, a new check reports the original source on closed-won deals, checks no longer pass on partly loaded or unsampled data, and closed stages are left out of the stage-probability check. Thanks to @harrisonoconnorhover for four of those fixes. See [CHANGELOG.md](CHANGELOG.md).
 
 What's new in v1.5.1: the unused custom properties check no longer passes, or suggests archiving, when it has no sampled values to go on. Thanks to @harrisonoconnorhover. See [CHANGELOG.md](CHANGELOG.md).
 
@@ -223,18 +225,18 @@ Use the official server when you want an agent to work in the CRM. Use this serv
 
 The full fictional report is [examples/example-report.md](examples/example-report.md). The JSON form is [examples/example-report.json](examples/example-report.json). The PDF is [examples/example-report.pdf](examples/example-report.pdf).
 
-The checked-in sample scores **30** (14 working, 21 broken, 11 missing, and none need operator confirmation). A fresh demo scores 33, with 16 working, because the token-scope check passes and closed-won attribution passes on the sample. The public demo form has no captcha and 12 submissions in 30 days, so spam protection is critical. On this sample the passes that would need confirmation are already broken or missing.
+The checked-in sample scores **33** (16 working, 21 broken, 11 missing, and none need operator confirmation). The token-scope check passes, and closed-won attribution passes on the sample. The public demo form has no captcha and 12 submissions in 30 days, so spam protection is critical. On this sample the passes that would need confirmation are already broken or missing.
 
 ```markdown
 # HubSpot audit: Harbour Glass Co
 
 This report uses a fictional sample portal. It is not a customer account.
 
-Score: **30** (share of checks that are working). A check that needs operator confirmation is not a pass.
+Score: **33** (share of checks that are working). A check that needs operator confirmation is not a pass.
 
 | Status | Count |
 | --- | ---: |
-| Working | 14 |
+| Working | 16 |
 | Broken | 21 |
 | Missing | 11 |
 | Needs operator confirmation | 0 |

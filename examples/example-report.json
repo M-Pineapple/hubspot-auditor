@@ -2,9 +2,9 @@
   "portalName": "Harbour Glass Co",
   "fictional": true,
   "generatedAt": "2026-10-12T00:00:00.000Z",
-  "score": 30,
+  "score": 33,
   "counts": {
-    "working": 14,
+    "working": 16,
     "broken": 21,
     "missing": 11,
     "needs_operator_confirmation": 0
@@ -419,6 +419,18 @@
       "retest": "Load the landing page and confirm the tracking script request returns."
     },
     {
+      "id": "reporting.deal-attribution",
+      "auditor": "reporting",
+      "status": "working",
+      "severity": "high",
+      "process": "reporting",
+      "title": "Closed-won deal attribution",
+      "evidence": "5 of 5 sampled closed-won deals have an original source (share 1.00). Sources: DIRECT_TRAFFIC, ORGANIC_SEARCH, PAID_SEARCH, REFERRALS. By pipeline: Sales 5. Campaign property set on 4 of 5 sampled closed-won deals, where present (evidence only). Ad assets: Spring studio tour 2. Ad spend needs_operator_confirmation.",
+      "recommendedFix": "Keep an original source on every closed-won deal. Deals with no associated contact or company show as unsourced, because HubSpot inherits the original source from them.",
+      "ownerRole": "Marketing ops",
+      "retest": "Open five closed-won deals and confirm each original source, then rerun the audit."
+    },
+    {
       "id": "reporting.lifecycle-funnel",
       "auditor": "reporting",
       "status": "working",
@@ -537,6 +549,18 @@
       "recommendedFix": "Merge the duplicate contacts and turn on a create-time duplicate rule.",
       "ownerRole": "RevOps",
       "retest": "Import ten rows that repeat one email and confirm HubSpot does not create a second contact."
+    },
+    {
+      "id": "integrations.token-scopes",
+      "auditor": "integrations",
+      "status": "working",
+      "severity": "high",
+      "process": "data hygiene",
+      "title": "Token scopes",
+      "evidence": "The token has no write scope.",
+      "recommendedFix": "Keep the private app on read scopes.",
+      "ownerRole": "Integration owner",
+      "retest": "Open the private app Scopes tab, remove every write scope, and rerun the audit."
     },
     {
       "id": "crm.unused-custom-properties",
