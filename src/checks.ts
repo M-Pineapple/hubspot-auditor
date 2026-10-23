@@ -122,6 +122,20 @@ function strList(params: Record<string, unknown>, key: string): string[] {
   return Array.isArray(value) ? value.map(String) : [];
 }
 
+export function writeScopeNames(scopes: string[], params: Record<string, unknown>): string[] {
+  const suffixes = strList(params, "writeSuffixes").map((item) => item.toLowerCase()).filter((item) => item.length > 0);
+  const exact = new Set(strList(params, "writeScopes").map((item) => item.toLowerCase()));
+  return scopes.filter((scope) => {
+    const name = scope.toLowerCase();
+    return exact.has(name) || suffixes.some((suffix) => name.endsWith(suffix));
+  });
+}
+
+function broadScopeNames(scopes: string[], params: Record<string, unknown>): string[] {
+  const exact = new Set(strList(params, "broadScopes").map((item) => item.toLowerCase()));
+  return scopes.filter((scope) => exact.has(scope.toLowerCase()));
+}
+
 export const checks: Record<string, CheckFn> = {
   "crm.duplicate-contacts": ({ snapshot, rule }) => {
     const blocked = blockedFinding(rule, snapshot, "contacts", "Grant the read scope for contacts and run the audit again.");
@@ -677,6 +691,45 @@ export const checks: Record<string, CheckFn> = {
       `${badApps.length} app(s) and ${badHooks.length} webhook(s) report sync errors.`,
       "Open the failing sync and replay or pause it.",
     );
+  },
+
+  "integrations.token-scopes": ({ snapshot, rule }) => {
+    if (!snapshot.tokenScopes) {
+      return finding(
+        rule,
+        "missing",
+        "Token scopes were not read for this snapshot.",
+        "Run a live audit so the token scopes are read.",
+      );
+    }
+    const { scopes, status } = snapshot.tokenScopes;
+    if (status !== 200 || scopes === null) {
+      return finding(
+        rule,
+        "missing",
+        `Could not read token scopes (HTTP ${status}). EU tokens and some accounts return this.`,
+        "Open the private app's Scopes tab and confirm no write scope is granted.",
+      );
+    }
+    const writes = writeScopeNames(scopes, rule.params);
+    if (writes.length > 0) {
+      return finding(
+        rule,
+        "broken",
+        `The token has write scopes: ${writes.join(", ")}.`,
+        "Remove the write scopes from the private app. The auditor will not use them.",
+      );
+    }
+    const broad = broadScopeNames(scopes, rule.params);
+    if (broad.length > 0) {
+      return finding(
+        rule,
+        "needs_operator_confirmation",
+        `The token has broad scopes that can also write: ${broad.join(", ")}.`,
+        "Open the private app's Scopes tab and confirm these legacy scopes, or replace them with read scopes.",
+      );
+    }
+    return finding(rule, "working", "The token has no write scope.", "Keep the private app on read scopes.");
   },
 
   "reporting.dashboards": ({ snapshot, rule }) => {

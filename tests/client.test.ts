@@ -16,7 +16,7 @@ test("a 429 is retried and a 403 is not", async () => {
   let forbidden = 0;
   const client = new HubSpotReadClient("token", async (url) => {
     const path = String(url);
-    if (path.endsWith("/limited")) {
+    if (path.includes("case=limited")) {
       limited += 1;
       if (limited === 1) return new Response("{}", { status: 429, headers: { "retry-after": "0" } });
       return new Response(JSON.stringify({ ok: true }), { status: 200 });
@@ -24,10 +24,10 @@ test("a 429 is retried and a 403 is not", async () => {
     forbidden += 1;
     return new Response("{}", { status: 403 });
   });
-  const body = await client.get<{ ok: boolean }>("/limited");
+  const body = await client.get<{ ok: boolean }>("/crm/v3/objects/contacts?case=limited");
   assert.equal(body.ok, true);
   assert.equal(limited, 2);
-  await assert.rejects(client.get("/forbidden"), /HTTP 403/);
+  await assert.rejects(client.get("/crm/v3/objects/companies?case=forbidden"), /HTTP 403/);
   assert.equal(forbidden, 1);
 });
 

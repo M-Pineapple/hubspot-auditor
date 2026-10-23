@@ -180,6 +180,11 @@ export interface FetchGap {
   status: number;
 }
 
+export interface TokenScopes {
+  scopes: string[] | null;
+  status: number;
+}
+
 export interface PortalSnapshot {
   portalName: string;
   fictional: boolean;
@@ -201,4 +206,5 @@ export interface PortalSnapshot {
   subscriptionTypes: SubscriptionType[];
   owners: OwnerRecord[];
   fetchGaps: FetchGap[];
+  tokenScopes?: TokenScopes;
 }

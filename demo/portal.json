@@ -94,5 +94,16 @@
   ],
   "subscriptionTypes": [{"id": "s1", "name": "Studio news"}],
   "owners": [{"id": "o1"}],
+  "tokenScopes": {
+    "scopes": [
+      "crm.objects.contacts.read",
+      "crm.schemas.contacts.read",
+      "crm.objects.companies.read",
+      "crm.objects.deals.read",
+      "crm.objects.owners.read",
+      "crm.lists.read"
+    ],
+    "status": 200
+  },
   "fetchGaps": []
 }

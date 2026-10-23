@@ -1,6 +1,6 @@
 # Security
 
-HubSpot Auditor is read-only. The HubSpot client throws if any method other than GET is used. Do not grant write scopes to the private app token.
+HubSpot Auditor is read-only. Every request is checked against a GET allowlist plus one token-info POST. Requests to any other host or path are refused. Do not grant write scopes to the private app token.
 
 ## Token handling
 

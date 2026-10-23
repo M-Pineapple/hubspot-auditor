@@ -1,6 +1,7 @@
 import type { FetchGap, FormDef, LandingPage, MarketingEmail, PortalSnapshot, Workflow } from "../types.ts";
 import { countRecentSubmissions, formProtection } from "./form-protection.ts";
 import { loadRules } from "../rules.ts";
+import { writeScopeNames } from "../checks.ts";
 import { HubSpotReadClient } from "./client.ts";
 import { classifyMailAuth, lookupTxt, resilientFetch } from "./net.ts";
 import { fetchPublicPage } from "./public-url.ts";
@@ -216,9 +217,21 @@ export async function loadPortal(
   token: string,
   publicSiteUrl?: string,
   fetchImpl: typeof fetch = resilientFetch,
+  write: (chunk: string) => void = (chunk) => {
+    process.stderr.write(chunk);
+  },
 ): Promise<PortalSnapshot> {
   const client = new HubSpotReadClient(token, fetchImpl);
   const gaps: FetchGap[] = [];
+  const info = await client.tokenInfo();
+  const tokenScopes = "scopes" in info
+    ? { scopes: info.scopes, status: 200 }
+    : { scopes: null, status: info.error };
+  const scopeRule = loadRules().find((item) => item.id === "integrations.token-scopes");
+  const writes = tokenScopes.scopes && scopeRule ? writeScopeNames(tokenScopes.scopes, scopeRule.params) : [];
+  if (writes.length > 0) {
+    write(`Warning: the HubSpot token has write scopes (${writes.join(", ")}). The auditor will not use them. Remove them from the private app.\n`);
+  }
   const account = await tryGet<{ portalId?: number }>(client, "/account-info/v3/details", "account", gaps);
   const contactProperties = sampledContactProperties();
   const contacts = await listAll<RawObject>(
@@ -442,5 +455,6 @@ export async function loadPortal(
     })),
     owners: (ownerPage?.results ?? []).map((owner) => ({ id: String(owner.id) })),
     fetchGaps: gaps,
+    tokenScopes,
   };
 }

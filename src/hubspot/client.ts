@@ -1,17 +1,12 @@
+import { assertAllowed, hubSpotUrl, ReadOnlyError } from "./allowlist.ts";
 import { resilientFetch } from "./net.ts";
 
-export class ReadOnlyError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "ReadOnlyError";
-  }
-}
+export { ReadOnlyError };
+
+const TOKEN_INFO_PATH = "/oauth/v2/private-apps/get/access-token-info";
 
 export function assertReadOnly(method: string, path: string): void {
-  const verb = method.toUpperCase();
-  if (verb !== "GET") {
-    throw new ReadOnlyError(`Refused ${verb} ${path}. HubSpot Auditor never writes to a portal.`);
-  }
+  assertAllowed(method, hubSpotUrl(path));
 }
 
 export class HubSpotReadClient {
@@ -24,10 +19,11 @@ export class HubSpotReadClient {
   }
 
   async get<T>(path: string): Promise<T> {
-    assertReadOnly("GET", path);
+    const url = hubSpotUrl(path);
+    assertAllowed("GET", url);
     let last: Response | null = null;
     for (let attempt = 0; attempt < 4; attempt += 1) {
-      const response = await this.fetchImpl(`https://api.hubapi.com${path}`, {
+      const response = await this.fetchImpl(url, {
         method: "GET",
         headers: { Authorization: `Bearer ${this.token}`, Accept: "application/json" },
       });
@@ -44,6 +40,36 @@ export class HubSpotReadClient {
     (error as Error & { status: number; path: string }).status = status;
     (error as Error & { status: number; path: string }).path = path;
     throw error;
+  }
+
+  async tokenInfo(): Promise<{ scopes: string[] } | { error: number }> {
+    const url = hubSpotUrl(TOKEN_INFO_PATH);
+    assertAllowed("POST", url);
+    let response: Response;
+    try {
+      response = await this.fetchImpl(url, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${this.token}`,
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ tokenKey: this.token }),
+      });
+    } catch (error) {
+      if (error instanceof ReadOnlyError) throw error;
+      return { error: 0 };
+    }
+    if (!response.ok) return { error: response.status };
+    try {
+      const body = (await response.json()) as { scopes?: unknown };
+      if (!Array.isArray(body.scopes) || body.scopes.some((item) => typeof item !== "string")) {
+        return { error: response.status };
+      }
+      return { scopes: body.scopes };
+    } catch {
+      return { error: response.status };
+    }
   }
 }
 

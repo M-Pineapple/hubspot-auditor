@@ -240,6 +240,11 @@ export const checkMeta: Record<string, CheckMeta> = {
     ownerRole: "Integration owner",
     retest: "Find the integration that created the bad row, correct that route, and rerun a ten-row import.",
   },
+  "integrations.token-scopes": {
+    process: "data hygiene",
+    ownerRole: "Integration owner",
+    retest: "Open the private app Scopes tab, remove every write scope, and rerun the audit.",
+  },
   "reporting.dashboards": {
     process: "reporting",
     ownerRole: "RevOps",
