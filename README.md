@@ -250,7 +250,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## More MCP servers by M-Pineapple
 
-- [Claude-Project-Coordinator](https://github.com/M-Pineapple/Claude-Project-Coordinator)
+- [Dev Project Coordinator](https://github.com/M-Pineapple/Dev-Project-Coordinator)
 - [CryptoAnalysisMCP](https://github.com/M-Pineapple/CryptoAnalysisMCP)
 - [warp-command-runner](https://github.com/M-Pineapple/warp-command-runner)
 - [msty-admin-mcp](https://github.com/M-Pineapple/msty-admin-mcp)
