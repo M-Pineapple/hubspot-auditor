@@ -27,7 +27,7 @@ jobs:
           registry-url: https://registry.npmjs.org
           package-manager-cache: false
 
-      # Pinned. Bump deliberately; npm Trusted Publishing needs npm 11.5.1 or later.
+      # Pinned. Bump deliberately. npm Trusted Publishing needs npm 11.5.1 or later.
       - run: npm install -g npm@12.2.2
 
       - run: npm ci

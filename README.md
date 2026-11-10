@@ -15,7 +15,7 @@ Read-only audit of a HubSpot portal. You get a scored report of what works, what
 
 The server speaks MCP over stdio. A CLI runs the same audit. It never sends PUT, PATCH, or DELETE to HubSpot. Its only POST is the start-up read of the token's own scopes.
 
-What's new in v1.5.3: security updates to the MCP SDK, zod 4 and their dependencies, and pinned release tooling. v1.5.2 added a start-up check warns when the token has a write scope and every HubSpot request is held to a read-only allowlist, a new check reports the original source on closed-won deals, checks no longer pass on partly loaded or unsampled data, and closed stages are left out of the stage-probability check. Thanks to @harrisonoconnorhover for four of those fixes. See [CHANGELOG.md](CHANGELOG.md).
+What's new in v1.5.3: security updates to the MCP SDK, zod 4 and their dependencies, and pinned release tooling. v1.5.2 added a start-up check that warns when the token has a write scope and every HubSpot request is held to a read-only allowlist, a new check reports the original source on closed-won deals, checks no longer pass on partly loaded or unsampled data, and closed stages are left out of the stage-probability check. Thanks to @harrisonoconnorhover for four of those fixes. See [CHANGELOG.md](CHANGELOG.md).
 
 What's new in v1.5.1: the unused custom properties check no longer passes, or suggests archiving, when it has no sampled values to go on. Thanks to @harrisonoconnorhover. See [CHANGELOG.md](CHANGELOG.md).
 
