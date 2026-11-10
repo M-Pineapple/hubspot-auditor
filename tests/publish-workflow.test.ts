@@ -24,7 +24,7 @@ test("publish workflow does not use npm tokens or secrets", () => {
   assert.doesNotMatch(wf, /NPM_TOKEN|NODE_AUTH_TOKEN|secrets\.|--provenance/);
 });
 
-test("publish workflow runs on v* tags or workflow_dispatch with Node 24 and npm latest", () => {
+test("publish workflow runs on v* tags or workflow_dispatch with Node 24 and a pinned npm", () => {
   assert.match(wf, /tags:\s*\n\s+-\s+'v\*'/);
   assert.match(wf, /workflow_dispatch:/);
   assert.match(wf, /mcp_registry_only:/);
@@ -32,10 +32,17 @@ test("publish workflow runs on v* tags or workflow_dispatch with Node 24 and npm
   assert.match(wf, /node-version:\s*'24'/);
   assert.match(wf, /registry-url:\s*https:\/\/registry\.npmjs\.org/);
   assert.match(wf, /package-manager-cache:\s*false/);
-  assert.match(wf, /npm install -g npm@latest/);
+  assert.match(wf, /npm install -g npm@\d+\.\d+\.\d+\n/);
   assert.match(wf, /npm publish/);
   assert.match(wf, /mcp-publisher login github-oidc/);
   assert.match(wf, /mcp-publisher publish/);
+});
+
+test("publish workflow pins release tools instead of installing latest", () => {
+  assert.doesNotMatch(wf, /@latest|releases\/latest/);
+  assert.match(wf, /MCP_PUBLISHER_VERSION:\s*v\d+\.\d+\.\d+/);
+  assert.match(wf, /MCP_PUBLISHER_SHA256:\s*[0-9a-f]{64}/);
+  assert.match(wf, /sha256sum -c -/);
 });
 
 test("publish workflow retries MCP Registry publish with backoff", () => {

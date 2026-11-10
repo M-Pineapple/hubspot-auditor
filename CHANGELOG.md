@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.5.3] - 2026-11-10
+
+### Security
+
+- Updated `zod` from 3.25 to 4.6.7 (GHSA-mrhx-c7xc-m3w5, memory exhaustion on large arrays) and `@modelcontextprotocol/sdk` to 1.32.2. The lockfile now resolves `body-parser` 2.4.0 (GHSA-27r3-jxmh-p828), `fast-uri` 3.1.9 (GHSA-w74x-v6f9-j3xg, GHSA-xhq7-xmqj-769h, GHSA-wjr9-j795-jxcr, GHSA-333x-w4r6-6crp) and `qs` 6.17.1 (GHSA-6pq8-jhm2-2vcw). `npm audit` reports 0 vulnerabilities.
+- The publish workflow pins npm to 12.2.2 and `mcp-publisher` to v1.8.8 with a SHA-256 check, instead of installing the latest release of each.
+
 ## [1.5.2] - 2026-10-23
 
 ### Added
