@@ -1,6 +1,6 @@
 {
   "name": "hubspot-auditor",
-  "version": "1.5.2",
+  "version": "1.5.3",
   "mcpName": "io.github.M-Pineapple/hubspot-auditor",
   "description": "Read-only MCP server that audits a HubSpot portal and reports what works, what is broken, what is missing, and what needs a person to confirm.",
   "type": "module",
@@ -51,10 +51,10 @@
     "node": ">=22"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.17.0",
+    "@modelcontextprotocol/sdk": "^1.32.2",
     "js-yaml": "^4.1.0",
     "pdfkit": "^0.20.2",
-    "zod": "^3.25.0"
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@types/js-yaml": "^4.0.9",
